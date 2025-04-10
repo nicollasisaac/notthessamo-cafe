@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Pencil, Loader2, Filter } from 'lucide-react';
+import { Plus, Pencil, Loader2, Filter, Coffee } from 'lucide-react';
 import { supabase, Product, Category } from '../config/database';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";

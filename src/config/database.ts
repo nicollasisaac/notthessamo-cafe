@@ -1,12 +1,5 @@
 
-import { createClient } from '@supabase/supabase-js';
-
-// Database connection configuration
-const supabaseUrl = 'https://hivipgycifvbesazqghw.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhpdmlwZ3ljaWZ2YmVzYXpxZ2h3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTI4NzM5NzAsImV4cCI6MjAyODQ0OTk3MH0.YqEJX-bkxcSXJYI9YK5nQBeKRMKxI0qJAZvsTXs3_Sg';
-
-// Create a single supabase client for the entire app
-export const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '@/integrations/supabase/client';
 
 // Type definitions for our database schemas
 export type Category = {
@@ -29,3 +22,6 @@ export type Product = {
   variant_box_title: string;
   categoryName?: string; // Added for UI display
 };
+
+// Re-export supabase client for easier imports across the app
+export { supabase };
