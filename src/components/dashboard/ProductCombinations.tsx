@@ -8,9 +8,10 @@ interface ProductCombinationsProps {
     combo: string;
     quantidade: number;
   }>;
+  isLoading?: boolean;
 }
 
-const ProductCombinations: React.FC<ProductCombinationsProps> = ({ data }) => {
+const ProductCombinations: React.FC<ProductCombinationsProps> = ({ data, isLoading }) => {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       return (
@@ -31,25 +32,35 @@ const ProductCombinations: React.FC<ProductCombinationsProps> = ({ data }) => {
         <CardHeader>
           <CardTitle className="text-lg">Top 10 Combinações de Produtos</CardTitle>
         </CardHeader>
-        <CardContent className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={data}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis 
-                type="category" 
-                dataKey="combo" 
-                width={150}
-                tick={{ fontSize: 11 }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="quantidade" fill="#333333" name="Quantidade" />
-            </BarChart>
-          </ResponsiveContainer>
+        <CardContent className="h-72 md:h-96">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <p>Carregando dados...</p>
+            </div>
+          ) : data && data.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={data}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 150, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis 
+                  type="category" 
+                  dataKey="combo" 
+                  width={150}
+                  tick={{ fontSize: 11 }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="quantidade" fill="#333333" name="Quantidade" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p>Nenhum dado disponível para o período selecionado</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

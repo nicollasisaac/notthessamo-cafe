@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PlusCircle, Coffee, Tag, BarChart4, Calendar, Filter } from 'lucide-react';
@@ -14,14 +13,35 @@ import WeeklySalesComparison from '@/components/dashboard/WeeklySalesComparison'
 import ProductAnalysis from '@/components/dashboard/ProductAnalysis';
 import CategoryRevenue from '@/components/dashboard/CategoryRevenue';
 import ProductCombinations from '@/components/dashboard/ProductCombinations';
+import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Dashboard = () => {
   const [productCount, setProductCount] = useState<number>(0);
   const [categoryCount, setCategoryCount] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [period, setPeriod] = useState<string>("month");
+  const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+  const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [dashboardData, setDashboardData] = useState<any>(null);
   const { toast } = useToast();
+  const isMobile = useIsMobile();
+
+  // Handle date range changes
+  const handleDateChange = (start: Date | undefined, end: Date | undefined) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
+
+  // Handle period selection changes
+  const handlePeriodChange = (newPeriod: string) => {
+    setPeriod(newPeriod);
+    // Reset custom date range when switching to predefined periods
+    if (newPeriod !== 'custom') {
+      setStartDate(undefined);
+      setEndDate(undefined);
+    }
+  };
 
   useEffect(() => {
     const fetchCounts = async () => {
@@ -68,21 +88,30 @@ const Dashboard = () => {
         const hoje = new Date();
         let dataInicio = new Date();
 
-        switch (period) {
-          case 'today':
-            dataInicio = new Date(hoje);
-            break;
-          case 'week':
-            dataInicio = new Date(hoje);
-            dataInicio.setDate(hoje.getDate() - 7);
-            break;
-          case 'month':
-            dataInicio = new Date(hoje);
-            dataInicio.setMonth(hoje.getMonth() - 1);
-            break;
-          default:
-            dataInicio = new Date(hoje);
-            dataInicio.setMonth(hoje.getMonth() - 1);
+        if (period === 'custom' && startDate && endDate) {
+          dataInicio = startDate;
+          // Ajustar para o fim do dia
+          const ajustedEndDate = new Date(endDate);
+          ajustedEndDate.setHours(23, 59, 59, 999);
+          hoje.setTime(ajustedEndDate.getTime());
+        } else {
+          switch (period) {
+            case 'today':
+              dataInicio = new Date(hoje);
+              dataInicio.setHours(0, 0, 0, 0);
+              break;
+            case 'week':
+              dataInicio = new Date(hoje);
+              dataInicio.setDate(hoje.getDate() - 7);
+              break;
+            case 'month':
+              dataInicio = new Date(hoje);
+              dataInicio.setMonth(hoje.getMonth() - 1);
+              break;
+            default:
+              dataInicio = new Date(hoje);
+              dataInicio.setMonth(hoje.getMonth() - 1);
+          }
         }
 
         // Formatar as datas para o formato ISO (string)
@@ -286,7 +315,9 @@ const Dashboard = () => {
             produtosVendidos: produtosVendidosArray,
             vendasPorCategoria: vendasPorCategoriaArray,
             combinacoesProdutos: combinacoesArray,
-            comparativoSemanal
+            comparativoSemanal,
+            periodoInicio: dataInicio,
+            periodoFim: hoje
           });
         }
       } catch (error) {
@@ -302,7 +333,7 @@ const Dashboard = () => {
     };
 
     fetchDashboardData();
-  }, [period, toast]);
+  }, [period, startDate, endDate, toast]);
 
   // Função auxiliar para obter o número da semana
   const getWeekNumber = (date: Date) => {
@@ -313,24 +344,15 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
-        <div className="flex items-center gap-4">
-          <Filter size={16} className="text-muted-foreground" />
-          <Select
-            defaultValue="month"
-            onValueChange={(value) => setPeriod(value)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Selecione o período" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Hoje</SelectItem>
-              <SelectItem value="week">Última Semana</SelectItem>
-              <SelectItem value="month">Último Mês</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        <DateRangePicker 
+          period={period}
+          onPeriodChange={handlePeriodChange}
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={handleDateChange}
+        />
       </div>
 
       {isLoading ? (
@@ -350,19 +372,20 @@ const Dashboard = () => {
               <DashboardMetrics data={dashboardData} />
               
               {/* Análise de vendas semanais */}
-              <WeeklySalesComparison data={dashboardData.comparativoSemanal} />
+              <WeeklySalesComparison data={dashboardData.comparativoSemanal} isLoading={isLoading} />
 
-              {/* Análise de produtos */}
-              <ProductAnalysis data={dashboardData.produtosVendidos} />
+              {/* Análise de produtos com filtro de período */}
+              <ProductAnalysis data={dashboardData.produtosVendidos} isLoading={isLoading} />
 
-              {/* Distribuição de receita por categoria */}
-              <CategoryRevenue data={dashboardData.vendasPorCategoria} />
+              {/* Distribuição de receita por categoria com filtro de período */}
+              <CategoryRevenue data={dashboardData.vendasPorCategoria} isLoading={isLoading} />
 
-              {/* Produtos mais vendidos juntos */}
-              <ProductCombinations data={dashboardData.combinacoesProdutos} />
+              {/* Produtos mais vendidos juntos com filtro de período */}
+              <ProductCombinations data={dashboardData.combinacoesProdutos} isLoading={isLoading} />
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Produtos</CardTitle>

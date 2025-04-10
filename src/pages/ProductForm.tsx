@@ -1,335 +1,458 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
-import { supabase, Product, Category } from '../config/database';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { useToast } from "@/hooks/use-toast";
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
+import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { PlusCircle, XCircle } from 'lucide-react';
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from '@/integrations/supabase/client';
+
+const formSchema = z.object({
+  name: z.string().min(2, {
+    message: "O nome do produto deve ter pelo menos 2 caracteres.",
+  }),
+  description: z.string().optional(),
+  price: z.string().refine((value) => {
+    try {
+      // Substitui vírgula por ponto e tenta converter para número
+      const numberValue = Number(value.replace(',', '.'));
+      return !isNaN(numberValue) && numberValue > 0;
+    } catch (error) {
+      return false;
+    }
+  }, {
+    message: "O preço deve ser um número válido maior que zero.",
+  }),
+  stockQuantity: z.string().refine((value) => {
+    try {
+      const numberValue = Number(value);
+      return !isNaN(numberValue) && numberValue >= 0;
+    } catch (error) {
+      return false;
+    }
+  }, {
+    message: "A quantidade em estoque deve ser um número inteiro não negativo.",
+  }),
+  category: z.string().refine((value) => {
+    try {
+      const numberValue = Number(value);
+      return !isNaN(numberValue) && numberValue > 0;
+    } catch (error) {
+      return false;
+    }
+  }, {
+    message: "Selecione uma categoria válida.",
+  }),
+  enabled: z.boolean().default(true),
+  variantBoxTitle: z.string().optional(),
+});
 
 const ProductForm = () => {
-  const [product, setProduct] = useState<Partial<Product>>({
-    name: '',
-    description: '',
-    price: 0,
-    stock_quantity: 0,
-    enabled: true,
-    image: '',
-    category: undefined,
-    variant_box_title: '',
-  });
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isSaving, setIsSaving] = useState<boolean>(false);
-  const { id } = useParams();
+  const [categories, setCategories] = useState<any[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [product, setProduct] = useState<any>(null);
+  const [variants, setVariants] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
-  const isEditMode = !!id;
+  const { id: productId } = useParams<{ id: string }>();
+  
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      price: "",
+      stockQuantity: "",
+      category: "",
+      enabled: true,
+      variantBoxTitle: "",
+    },
+  });
 
   useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('Category')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (error) {
+          throw error;
+        }
+
+        setCategories(data || []);
+      } catch (error: any) {
+        console.error("Error fetching categories:", error.message);
+        toast({
+          title: "Erro ao carregar categorias",
+          description: "Não foi possível carregar as categorias. Tente novamente mais tarde.",
+          variant: "destructive",
+        });
+      }
+    };
+
     fetchCategories();
-    if (isEditMode) {
+  }, [toast]);
+
+  useEffect(() => {
+    if (productId) {
+      const fetchProduct = async () => {
+        try {
+          const { data: productData, error: productError } = await supabase
+            .from('Product')
+            .select('*')
+            .eq('id', productId)
+            .single();
+
+          if (productError) throw productError;
+
+          setProduct(productData);
+
+          form.setValue('name', productData.name);
+          form.setValue('description', productData.description || "");
+          form.setValue('price', productData.price.toString());
+          form.setValue('stockQuantity', productData.stock_quantity.toString());
+          form.setValue('category', productData.category.toString());
+          form.setValue('enabled', productData.enabled);
+          form.setValue('variantBoxTitle', productData.variant_box_title || "");
+
+          // Fetch variants
+          const { data: variantsData, error: variantsError } = await supabase
+            .from('Variant')
+            .select('*')
+            .eq('product_id', productId);
+
+          if (variantsError) throw variantsError;
+
+          setVariants(variantsData || []);
+        } catch (error: any) {
+          console.error("Error fetching product:", error.message);
+          toast({
+            title: "Erro ao carregar produto",
+            description: "Não foi possível carregar os detalhes do produto. Tente novamente mais tarde.",
+            variant: "destructive",
+          });
+        }
+      };
+
       fetchProduct();
     }
-  }, [id]);
+  }, [productId, form, toast]);
 
-  const fetchCategories = async () => {
+  const saveProduct = async (data: z.infer<typeof formSchema>) => {
     try {
-      const { data, error } = await supabase
-        .from('Category')
-        .select('*')
-        .order('name');
+      setIsSubmitting(true);
       
-      if (error) throw error;
-      
-      setCategories(data || []);
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      toast({
-        title: "Erro ao carregar categorias",
-        description: "Tente novamente mais tarde.",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const fetchProduct = async () => {
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('Product')
-        .select('*')
-        .eq('id', parseInt(id || '0'))
-        .single();
-      
-      if (error) throw error;
-      
-      if (data) {
-        setProduct(data);
-      }
-    } catch (error) {
-      console.error('Error fetching product:', error);
-      toast({
-        title: "Erro ao carregar produto",
-        description: "Tente novamente mais tarde.",
-        variant: "destructive",
-      });
-      navigate('/products');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProduct({ ...product, [name]: value });
-  };
-
-  const handleNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setProduct({ ...product, [name]: parseFloat(value) || 0 });
-  };
-
-  const handleCategoryChange = (value: string) => {
-    setProduct({ ...product, category: parseInt(value) });
-  };
-
-  const handleEnabledChange = (checked: boolean) => {
-    setProduct({ ...product, enabled: checked });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    // Validation
-    if (!product.name?.trim()) {
-      toast({
-        title: "Informação faltando",
-        description: "Por favor, forneça um nome para o produto.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (product.price === undefined || product.price < 0) {
-      toast({
-        title: "Preço inválido",
-        description: "Por favor, forneça um preço válido.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    if (product.category === undefined) {
-      toast({
-        title: "Categoria faltando",
-        description: "Por favor, selecione uma categoria.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    try {
-      setIsSaving(true);
-      
-      // Format data
       const productData = {
-        ...product,
+        name: data.name,
+        description: data.description,
+        price: Number(data.price),
+        stock_quantity: Number(data.stockQuantity),
+        category: Number(data.category),
+        enabled: data.enabled,
+        variant_box_title: data.variantBoxTitle,
         updated_at: new Date().toISOString(),
       };
-      
-      if (isEditMode && id) {
-        // Update existing product
+
+      if (productId) {
         const { error } = await supabase
           .from('Product')
           .update(productData)
-          .eq('id', parseInt(id));
-        
-        if (error) throw error;
-        
+          .eq('id', productId);
+
+        if (error) {
+          throw error;
+        }
+
         toast({
-          title: "Produto atualizado",
-          description: "O produto foi atualizado com sucesso.",
+          title: "Produto atualizado com sucesso!",
         });
       } else {
-        // Create new product - fix by ensuring we pass a single object, not an array
-        const { error } = await supabase
+        const { data: newProduct, error } = await supabase
           .from('Product')
-          .insert(productData);
-        
-        if (error) throw error;
-        
+          .insert([
+            {
+              ...productData,
+              created_at: new Date().toISOString(),
+            },
+          ])
+          .select()
+
+        if (error) {
+          throw error;
+        }
+
         toast({
-          title: "Produto criado",
-          description: "O novo produto foi criado com sucesso.",
+          title: "Produto criado com sucesso!",
         });
+
+        // If creating a new product, navigate to the edit page
+        if (newProduct && newProduct.length > 0) {
+          navigate(`/products/edit/${newProduct[0].id}`);
+        }
       }
-      
-      navigate('/products');
-    } catch (error) {
-      console.error('Error saving product:', error);
+
+      navigate("/products");
+    } catch (error: any) {
+      console.error("Error saving product:", error.message);
       toast({
         title: "Erro ao salvar produto",
-        description: "Tente novamente mais tarde.",
+        description: "Ocorreu um erro ao salvar o produto. Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
-      setIsSaving(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center py-10">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
+  const addVariant = () => {
+    setVariants([
+      ...variants,
+      {
+        id: Date.now(), // Temporary ID
+        name: '',
+        price: 0,
+        product_id: productId,
+        isNew: true, // Flag to indicate it's a new variant
+      },
+    ]);
+  };
+
+  const updateVariant = (id: any, field: string, value: string | number | boolean) => {
+    setVariants(
+      variants.map((variant) =>
+        variant.id === id ? { ...variant, [field]: value } : variant
+      )
     );
-  }
+  };
+
+  const saveVariant = async (variant: any) => {
+    try {
+      setIsSubmitting(true);
+      const variantData = {
+        name: variant.name,
+        price: Number(variant.price),
+        product_id: productId,
+      };
+
+      if (variant.isNew) {
+        const { data, error } = await supabase
+          .from('Variant')
+          .insert([variantData])
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        // Update the variant in the state with the actual ID from the database
+        setVariants(
+          variants.map((v) =>
+            v.id === variant.id ? { ...data[0], isNew: false } : v
+          )
+        );
+
+        toast({
+          title: "Variante criada com sucesso!",
+        });
+      } else {
+        const { error } = await supabase
+          .from('Variant')
+          .update(variantData)
+          .eq('id', variant.id);
+
+        if (error) {
+          throw error;
+        }
+
+        toast({
+          title: "Variante atualizada com sucesso!",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error saving variant:", error.message);
+      toast({
+        title: "Erro ao salvar variante",
+        description: "Ocorreu um erro ao salvar a variante. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const deleteVariant = async (id: any) => {
+    try {
+      setIsSubmitting(true);
+      const { error } = await supabase.from('Variant').delete().eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
+      // Remove the variant from the state
+      setVariants(variants.filter((variant) => variant.id !== id));
+
+      toast({
+        title: "Variante removida com sucesso!",
+      });
+    } catch (error: any) {
+      console.error("Error deleting variant:", error.message);
+      toast({
+        title: "Erro ao remover variante",
+        description: "Ocorreu um erro ao remover a variante. Tente novamente mais tarde.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <div className="container mx-auto py-8">
+      <h1 className="text-2xl font-bold mb-4">{productId ? "Editar Produto" : "Novo Produto"}</h1>
+      
       <Card>
         <CardHeader>
-          <CardTitle>
-            {isEditMode ? 'Editar Produto' : 'Adicionar Novo Produto'}
-          </CardTitle>
+          <CardTitle>Informações do Produto</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Nome do Produto*</Label>
+          <form onSubmit={form.handleSubmit(saveProduct)} className="space-y-4">
+            <div>
+              <Label htmlFor="name" className="form-label">Nome do Produto</Label>
+              <Input id="name" type="text" className="form-input" placeholder="Nome do produto" {...form.register("name")} />
+              {form.formState.errors.name && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.name.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="description" className="form-label">Descrição</Label>
+              <Textarea id="description" className="form-input" placeholder="Descrição do produto" {...form.register("description")} />
+            </div>
+            <div>
+              <Label htmlFor="price" className="form-label">Preço</Label>
               <Input
-                id="name"
-                name="name"
-                value={product.name}
-                onChange={handleChange}
-                placeholder="Digite o nome do produto"
-                required
+                id="price"
+                type="text"
+                className="form-input"
+                placeholder="Preço do produto"
+                {...form.register("price")}
               />
+              {form.formState.errors.price && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.price.message}</p>
+              )}
             </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição</Label>
-              <Textarea
-                id="description"
-                name="description"
-                value={product.description || ''}
-                onChange={handleChange}
-                placeholder="Digite a descrição do produto"
-                rows={3}
+            <div>
+              <Label htmlFor="stockQuantity" className="form-label">Quantidade em Estoque</Label>
+              <Input
+                id="stockQuantity"
+                type="text"
+                className="form-input"
+                placeholder="Quantidade em estoque"
+                {...form.register("stockQuantity")}
               />
+              {form.formState.errors.stockQuantity && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.stockQuantity.message}</p>
+              )}
             </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="price">Preço*</Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={product.price}
-                  onChange={handleNumberChange}
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-              
-              <div className="space-y-2">
-                <Label htmlFor="stock_quantity">Quantidade em Estoque*</Label>
-                <Input
-                  id="stock_quantity"
-                  name="stock_quantity"
-                  type="number"
-                  min="0"
-                  step="1"
-                  value={product.stock_quantity}
-                  onChange={handleNumberChange}
-                  placeholder="0"
-                  required
-                />
-              </div>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="category">Categoria*</Label>
-              <Select 
-                value={product.category?.toString()} 
-                onValueChange={handleCategoryChange}
-              >
-                <SelectTrigger>
+            <div>
+              <Label htmlFor="category" className="form-label">Categoria</Label>
+              <Select onValueChange={form.setValue.bind(null, 'category')} defaultValue={product?.category?.toString()}>
+                <SelectTrigger className="w-full">
                   <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map(category => (
+                  {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id.toString()}>
                       {category.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {form.formState.errors.category && (
+                <p className="text-red-500 text-sm mt-1">{form.formState.errors.category.message}</p>
+              )}
+            </div>
+            <div>
+              <Label htmlFor="enabled" className="form-label">Ativo</Label>
+              <Switch id="enabled" checked={form.getValues("enabled")} onCheckedChange={form.setValue.bind(null, 'enabled')} />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="image">URL da Imagem</Label>
-              <Input
-                id="image"
-                name="image"
-                value={product.image || ''}
-                onChange={handleChange}
-                placeholder="Digite a URL da imagem"
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="variant_box_title">Título do Box Variante (opcional)</Label>
-              <Input
-                id="variant_box_title"
-                name="variant_box_title"
-                value={product.variant_box_title || ''}
-                onChange={handleChange}
-                placeholder="Digite o título do box variante"
-              />
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <Switch 
-                id="enabled"
-                checked={product.enabled}
-                onCheckedChange={handleEnabledChange}
-              />
-              <Label htmlFor="enabled">Produto está habilitado</Label>
-            </div>
-            
-            <div className="flex gap-2 justify-end pt-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => navigate('/products')}
-                disabled={isSaving}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={isSaving}>
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Salvando...
-                  </>
-                ) : (
-                  isEditMode ? 'Atualizar Produto' : 'Criar Produto'
-                )}
-              </Button>
-            </div>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? "Salvando..." : "Salvar Produto"}
+            </Button>
           </form>
         </CardContent>
       </Card>
+
+      {productId && (
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Variantes do Produto</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {variants.length > 0 && (
+              <div className="mb-4">
+                <Label htmlFor="variantBoxTitle" className="form-label">Título da Caixa de Variantes</Label>
+                <Input
+                  id="variantBoxTitle"
+                  type="text"
+                  className="form-input"
+                  placeholder="Título da caixa de variantes"
+                  {...form.register("variantBoxTitle")}
+                />
+              </div>
+            )}
+            {variants.map((variant) => (
+              <div key={variant.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <div>
+                  <Label htmlFor={`variant-name-${variant.id}`} className="form-label">Nome da Variante</Label>
+                  <Input
+                    id={`variant-name-${variant.id}`}
+                    type="text"
+                    className="form-input"
+                    placeholder="Nome"
+                    value={variant.name}
+                    onChange={(e) => updateVariant(variant.id, 'name', e.target.value)}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor={`variant-price-${variant.id}`} className="form-label">Preço da Variante</Label>
+                  <Input
+                    id={`variant-price-${variant.id}`}
+                    type="text"
+                    className="form-input"
+                    placeholder="Preço"
+                    value={variant.price}
+                    onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
+                  />
+                </div>
+                <div className="md:col-span-2 flex items-end justify-end">
+                  <Button type="button" variant="secondary" onClick={() => saveVariant(variant)} disabled={isSubmitting} className="mr-2">
+                    {isSubmitting ? "Salvando..." : "Salvar Variante"}
+                  </Button>
+                  <Button type="button" variant="destructive" onClick={() => deleteVariant(variant.id)} disabled={isSubmitting}>
+                    <XCircle className="mr-2 h-4 w-4" />
+                    Remover
+                  </Button>
+                </div>
+              </div>
+            ))}
+            <Button type="button" variant="outline" onClick={addVariant} disabled={isSubmitting}>
+              <PlusCircle className="mr-2 h-4 w-4" />
+              Adicionar Variante
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 };

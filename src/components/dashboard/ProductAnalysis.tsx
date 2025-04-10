@@ -8,11 +8,12 @@ interface ProductAnalysisProps {
     nome: string;
     quantidade: number;
   }>;
+  isLoading?: boolean;
 }
 
-const ProductAnalysis: React.FC<ProductAnalysisProps> = ({ data }) => {
+const ProductAnalysis: React.FC<ProductAnalysisProps> = ({ data, isLoading }) => {
   // Limitar para os 10 produtos mais vendidos para melhor visualização
-  const topProducts = data.slice(0, 10);
+  const topProducts = data?.slice(0, 10) || [];
   
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
@@ -39,25 +40,35 @@ const ProductAnalysis: React.FC<ProductAnalysisProps> = ({ data }) => {
             </p>
           )}
         </CardHeader>
-        <CardContent className="h-96">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-              data={topProducts}
-              layout="vertical"
-              margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
-            >
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis type="number" />
-              <YAxis 
-                type="category" 
-                dataKey="nome" 
-                width={100}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Bar dataKey="quantidade" fill="#333333" name="Quantidade" />
-            </BarChart>
-          </ResponsiveContainer>
+        <CardContent className="h-72 md:h-96">
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <p>Carregando dados...</p>
+            </div>
+          ) : topProducts.length > 0 ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart
+                data={topProducts}
+                layout="vertical"
+                margin={{ top: 5, right: 30, left: 100, bottom: 5 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis type="number" />
+                <YAxis 
+                  type="category" 
+                  dataKey="nome" 
+                  width={100}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip content={<CustomTooltip />} />
+                <Bar dataKey="quantidade" fill="#333333" name="Quantidade" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full">
+              <p>Nenhum dado disponível para o período selecionado</p>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
