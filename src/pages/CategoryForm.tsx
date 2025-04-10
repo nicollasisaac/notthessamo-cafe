@@ -30,7 +30,7 @@ const CategoryForm = () => {
       const { data, error } = await supabase
         .from('Category')
         .select('*')
-        .eq('id', id)
+        .eq('id', parseInt(id || '0'))
         .single();
       
       if (error) throw error;
@@ -41,8 +41,8 @@ const CategoryForm = () => {
     } catch (error) {
       console.error('Error fetching category:', error);
       toast({
-        title: "Error loading category",
-        description: "Please try again later.",
+        title: "Erro ao carregar categoria",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
       navigate('/categories');
@@ -56,8 +56,8 @@ const CategoryForm = () => {
     
     if (!name.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please provide a category name.",
+        title: "Informação faltando",
+        description: "Por favor, forneça um nome para a categoria.",
         variant: "destructive",
       });
       return;
@@ -66,18 +66,18 @@ const CategoryForm = () => {
     try {
       setIsSaving(true);
       
-      if (isEditMode) {
+      if (isEditMode && id) {
         // Update existing category
         const { error } = await supabase
           .from('Category')
           .update({ name })
-          .eq('id', id);
+          .eq('id', parseInt(id));
         
         if (error) throw error;
         
         toast({
-          title: "Category updated",
-          description: "The category has been updated successfully.",
+          title: "Categoria atualizada",
+          description: "A categoria foi atualizada com sucesso.",
         });
       } else {
         // Create new category
@@ -88,8 +88,8 @@ const CategoryForm = () => {
         if (error) throw error;
         
         toast({
-          title: "Category created",
-          description: "The new category has been created successfully.",
+          title: "Categoria criada",
+          description: "A nova categoria foi criada com sucesso.",
         });
       }
       
@@ -97,8 +97,8 @@ const CategoryForm = () => {
     } catch (error) {
       console.error('Error saving category:', error);
       toast({
-        title: "Error saving category",
-        description: "Please try again later.",
+        title: "Erro ao salvar categoria",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -119,18 +119,18 @@ const CategoryForm = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isEditMode ? 'Edit Category' : 'Add New Category'}
+            {isEditMode ? 'Editar Categoria' : 'Adicionar Nova Categoria'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Category Name</Label>
+              <Label htmlFor="name">Nome da Categoria</Label>
               <Input
                 id="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter category name"
+                placeholder="Digite o nome da categoria"
                 required
               />
             </div>
@@ -142,16 +142,16 @@ const CategoryForm = () => {
                 onClick={() => navigate('/categories')}
                 disabled={isSaving}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    Salvando...
                   </>
                 ) : (
-                  isEditMode ? 'Update Category' : 'Create Category'
+                  isEditMode ? 'Atualizar Categoria' : 'Criar Categoria'
                 )}
               </Button>
             </div>

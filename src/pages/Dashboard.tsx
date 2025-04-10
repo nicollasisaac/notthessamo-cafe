@@ -37,8 +37,8 @@ const Dashboard = () => {
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
         toast({
-          title: "Error loading dashboard data",
-          description: "Please try again later.",
+          title: "Erro ao carregar dados do painel",
+          description: "Tente novamente mais tarde.",
           variant: "destructive",
         });
       } finally {
@@ -52,7 +52,7 @@ const Dashboard = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
       </div>
 
       {isLoading ? (
@@ -68,18 +68,18 @@ const Dashboard = () => {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Products</CardTitle>
+              <CardTitle className="text-sm font-medium">Produtos</CardTitle>
               <Coffee className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{productCount}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                Total items in inventory
+                Total de itens no inventário
               </p>
               <div className="mt-4">
                 <Button asChild variant="outline" size="sm">
                   <Link to="/products" className="flex items-center">
-                    <span>Manage Products</span>
+                    <span>Gerenciar Produtos</span>
                   </Link>
                 </Button>
               </div>
@@ -88,18 +88,18 @@ const Dashboard = () => {
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Categories</CardTitle>
+              <CardTitle className="text-sm font-medium">Categorias</CardTitle>
               <Tag className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{categoryCount}</div>
               <p className="text-xs text-muted-foreground mt-1">
-                Total product categories
+                Total de categorias de produtos
               </p>
               <div className="mt-4">
                 <Button asChild variant="outline" size="sm">
                   <Link to="/categories" className="flex items-center">
-                    <span>Manage Categories</span>
+                    <span>Gerenciar Categorias</span>
                   </Link>
                 </Button>
               </div>
@@ -108,20 +108,20 @@ const Dashboard = () => {
           
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Quick Actions</CardTitle>
+              <CardTitle className="text-sm font-medium">Ações Rápidas</CardTitle>
               <PlusCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-2">
               <Button asChild size="sm" className="w-full">
                 <Link to="/products/new" className="flex items-center justify-center">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  <span>Add New Product</span>
+                  <span>Adicionar Novo Produto</span>
                 </Link>
               </Button>
               <Button asChild variant="outline" size="sm" className="w-full">
                 <Link to="/categories/new" className="flex items-center justify-center">
                   <PlusCircle className="mr-2 h-4 w-4" />
-                  <span>Add New Category</span>
+                  <span>Adicionar Nova Categoria</span>
                 </Link>
               </Button>
             </CardContent>

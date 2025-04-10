@@ -45,8 +45,8 @@ const Products = () => {
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast({
-        title: "Error loading categories",
-        description: "Please try again later.",
+        title: "Erro ao carregar categorias",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     }
@@ -81,8 +81,8 @@ const Products = () => {
     } catch (error) {
       console.error('Error fetching products:', error);
       toast({
-        title: "Error loading products",
-        description: "Please try again later.",
+        title: "Erro ao carregar produtos",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -105,34 +105,34 @@ const Products = () => {
       ));
       
       toast({
-        title: `Product ${product.enabled ? 'disabled' : 'enabled'}`,
-        description: `${product.name} has been ${product.enabled ? 'disabled' : 'enabled'}.`,
+        title: `Produto ${product.enabled ? 'desabilitado' : 'habilitado'}`,
+        description: `${product.name} foi ${product.enabled ? 'desabilitado' : 'habilitado'}.`,
       });
     } catch (error) {
       console.error('Error updating product:', error);
       toast({
-        title: "Error updating product",
-        description: "Please try again later.",
+        title: "Erro ao atualizar produto",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     }
   };
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('en-US', {
+    return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: 'USD',
+      currency: 'BRL',
     }).format(price);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Products</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Produtos</h1>
         <Button asChild>
           <Link to="/products/new" className="flex items-center">
             <Plus className="mr-2 h-4 w-4" />
-            <span>Add Product</span>
+            <span>Adicionar Produto</span>
           </Link>
         </Button>
       </div>
@@ -142,10 +142,10 @@ const Products = () => {
         <Filter className="h-4 w-4 text-muted-foreground" />
         <Select value={selectedCategory} onValueChange={setSelectedCategory}>
           <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by category" />
+            <SelectValue placeholder="Filtrar por categoria" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="all">Todas as Categorias</SelectItem>
             {categories.map(category => (
               <SelectItem key={category.id} value={category.id.toString()}>
                 {category.name}
@@ -163,13 +163,13 @@ const Products = () => {
         <div className="flex flex-col items-center justify-center py-10 text-center">
           <p className="text-muted-foreground mb-4">
             {selectedCategory !== 'all' 
-              ? "No products found in this category."
-              : "No products found. Create your first product to get started."}
+              ? "Nenhum produto encontrado nesta categoria."
+              : "Nenhum produto encontrado. Crie seu primeiro produto para começar."}
           </p>
           <Button asChild>
             <Link to="/products/new">
               <Plus className="mr-2 h-4 w-4" />
-              <span>Add Product</span>
+              <span>Adicionar Produto</span>
             </Link>
           </Button>
         </div>
@@ -178,12 +178,12 @@ const Products = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Product</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Stock</TableHead>
+                <TableHead>Produto</TableHead>
+                <TableHead>Categoria</TableHead>
+                <TableHead>Preço</TableHead>
+                <TableHead>Estoque</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
+                <TableHead className="w-24">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

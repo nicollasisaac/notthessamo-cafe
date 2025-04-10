@@ -37,8 +37,8 @@ const Categories = () => {
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast({
-        title: "Error loading categories",
-        description: "Please try again later.",
+        title: "Erro ao carregar categorias",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -49,11 +49,11 @@ const Categories = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">Categories</h1>
+        <h1 className="text-2xl font-bold tracking-tight">Categorias</h1>
         <Button asChild>
           <Link to="/categories/new" className="flex items-center">
             <Plus className="mr-2 h-4 w-4" />
-            <span>Add Category</span>
+            <span>Adicionar Categoria</span>
           </Link>
         </Button>
       </div>
@@ -64,11 +64,11 @@ const Categories = () => {
         </div>
       ) : categories.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-10 text-center">
-          <p className="text-muted-foreground mb-4">No categories found. Create your first category to get started.</p>
+          <p className="text-muted-foreground mb-4">Nenhuma categoria encontrada. Crie sua primeira categoria para começar.</p>
           <Button asChild>
             <Link to="/categories/new">
               <Plus className="mr-2 h-4 w-4" />
-              <span>Add Category</span>
+              <span>Adicionar Categoria</span>
             </Link>
           </Button>
         </div>
@@ -77,8 +77,8 @@ const Categories = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="w-24">Actions</TableHead>
+                <TableHead>Nome</TableHead>
+                <TableHead className="w-24">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

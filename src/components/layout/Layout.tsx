@@ -17,7 +17,7 @@ const Layout = ({ children }: LayoutProps) => {
         <div className="container mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Coffee size={24} />
-            <h1 className="text-xl font-bold">Cafe Inventory</h1>
+            <h1 className="text-xl font-bold">Nothessamo Cafe</h1>
           </div>
         </div>
       </header>
@@ -33,7 +33,7 @@ const Layout = ({ children }: LayoutProps) => {
                   location.pathname === '/' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
                 }`}
               >
-                Dashboard
+                Painel
               </Link>
             </li>
             <li>
@@ -43,7 +43,7 @@ const Layout = ({ children }: LayoutProps) => {
                   location.pathname === '/products' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
                 }`}
               >
-                Products
+                Produtos
               </Link>
             </li>
             <li>
@@ -53,7 +53,7 @@ const Layout = ({ children }: LayoutProps) => {
                   location.pathname === '/categories' ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
                 }`}
               >
-                Categories
+                Categorias
               </Link>
             </li>
           </ul>
@@ -70,7 +70,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Footer */}
       <footer className="bg-secondary py-4 text-center text-sm text-muted-foreground">
         <div className="container mx-auto">
-          Cafe Inventory Management &copy; {new Date().getFullYear()}
+          Nothessamo Cafe - Gerenciamento de Inventário &copy; {new Date().getFullYear()}
         </div>
       </footer>
     </div>

@@ -51,8 +51,8 @@ const ProductForm = () => {
     } catch (error) {
       console.error('Error fetching categories:', error);
       toast({
-        title: "Error loading categories",
-        description: "Please try again later.",
+        title: "Erro ao carregar categorias",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     }
@@ -64,7 +64,7 @@ const ProductForm = () => {
       const { data, error } = await supabase
         .from('Product')
         .select('*')
-        .eq('id', id)
+        .eq('id', parseInt(id || '0'))
         .single();
       
       if (error) throw error;
@@ -75,8 +75,8 @@ const ProductForm = () => {
     } catch (error) {
       console.error('Error fetching product:', error);
       toast({
-        title: "Error loading product",
-        description: "Please try again later.",
+        title: "Erro ao carregar produto",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
       navigate('/products');
@@ -109,8 +109,8 @@ const ProductForm = () => {
     // Validation
     if (!product.name?.trim()) {
       toast({
-        title: "Missing information",
-        description: "Please provide a product name.",
+        title: "Informação faltando",
+        description: "Por favor, forneça um nome para o produto.",
         variant: "destructive",
       });
       return;
@@ -118,8 +118,8 @@ const ProductForm = () => {
     
     if (product.price === undefined || product.price < 0) {
       toast({
-        title: "Invalid price",
-        description: "Please provide a valid price.",
+        title: "Preço inválido",
+        description: "Por favor, forneça um preço válido.",
         variant: "destructive",
       });
       return;
@@ -127,8 +127,8 @@ const ProductForm = () => {
     
     if (product.category === undefined) {
       toast({
-        title: "Missing category",
-        description: "Please select a category.",
+        title: "Categoria faltando",
+        description: "Por favor, selecione uma categoria.",
         variant: "destructive",
       });
       return;
@@ -143,30 +143,30 @@ const ProductForm = () => {
         updated_at: new Date().toISOString(),
       };
       
-      if (isEditMode) {
+      if (isEditMode && id) {
         // Update existing product
         const { error } = await supabase
           .from('Product')
           .update(productData)
-          .eq('id', id);
+          .eq('id', parseInt(id));
         
         if (error) throw error;
         
         toast({
-          title: "Product updated",
-          description: "The product has been updated successfully.",
+          title: "Produto atualizado",
+          description: "O produto foi atualizado com sucesso.",
         });
       } else {
-        // Create new product
+        // Create new product - fix by ensuring we pass a single object, not an array
         const { error } = await supabase
           .from('Product')
-          .insert([productData]);
+          .insert(productData);
         
         if (error) throw error;
         
         toast({
-          title: "Product created",
-          description: "The new product has been created successfully.",
+          title: "Produto criado",
+          description: "O novo produto foi criado com sucesso.",
         });
       }
       
@@ -174,8 +174,8 @@ const ProductForm = () => {
     } catch (error) {
       console.error('Error saving product:', error);
       toast({
-        title: "Error saving product",
-        description: "Please try again later.",
+        title: "Erro ao salvar produto",
+        description: "Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -196,38 +196,38 @@ const ProductForm = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            {isEditMode ? 'Edit Product' : 'Add New Product'}
+            {isEditMode ? 'Editar Produto' : 'Adicionar Novo Produto'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="name">Product Name*</Label>
+              <Label htmlFor="name">Nome do Produto*</Label>
               <Input
                 id="name"
                 name="name"
                 value={product.name}
                 onChange={handleChange}
-                placeholder="Enter product name"
+                placeholder="Digite o nome do produto"
                 required
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="description">Description</Label>
+              <Label htmlFor="description">Descrição</Label>
               <Textarea
                 id="description"
                 name="description"
                 value={product.description || ''}
                 onChange={handleChange}
-                placeholder="Enter product description"
+                placeholder="Digite a descrição do produto"
                 rows={3}
               />
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="price">Price*</Label>
+                <Label htmlFor="price">Preço*</Label>
                 <Input
                   id="price"
                   name="price"
@@ -242,7 +242,7 @@ const ProductForm = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="stock_quantity">Stock Quantity*</Label>
+                <Label htmlFor="stock_quantity">Quantidade em Estoque*</Label>
                 <Input
                   id="stock_quantity"
                   name="stock_quantity"
@@ -258,13 +258,13 @@ const ProductForm = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="category">Category*</Label>
+              <Label htmlFor="category">Categoria*</Label>
               <Select 
                 value={product.category?.toString()} 
                 onValueChange={handleCategoryChange}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a category" />
+                  <SelectValue placeholder="Selecione uma categoria" />
                 </SelectTrigger>
                 <SelectContent>
                   {categories.map(category => (
@@ -277,24 +277,24 @@ const ProductForm = () => {
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="image">Image URL</Label>
+              <Label htmlFor="image">URL da Imagem</Label>
               <Input
                 id="image"
                 name="image"
                 value={product.image || ''}
                 onChange={handleChange}
-                placeholder="Enter image URL"
+                placeholder="Digite a URL da imagem"
               />
             </div>
             
             <div className="space-y-2">
-              <Label htmlFor="variant_box_title">Variant Box Title (optional)</Label>
+              <Label htmlFor="variant_box_title">Título do Box Variante (opcional)</Label>
               <Input
                 id="variant_box_title"
                 name="variant_box_title"
                 value={product.variant_box_title || ''}
                 onChange={handleChange}
-                placeholder="Enter variant box title"
+                placeholder="Digite o título do box variante"
               />
             </div>
             
@@ -304,7 +304,7 @@ const ProductForm = () => {
                 checked={product.enabled}
                 onCheckedChange={handleEnabledChange}
               />
-              <Label htmlFor="enabled">Product is enabled</Label>
+              <Label htmlFor="enabled">Produto está habilitado</Label>
             </div>
             
             <div className="flex gap-2 justify-end pt-2">
@@ -314,16 +314,16 @@ const ProductForm = () => {
                 onClick={() => navigate('/products')}
                 disabled={isSaving}
               >
-                Cancel
+                Cancelar
               </Button>
               <Button type="submit" disabled={isSaving}>
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Saving...
+                    Salvando...
                   </>
                 ) : (
-                  isEditMode ? 'Update Product' : 'Create Product'
+                  isEditMode ? 'Atualizar Produto' : 'Criar Produto'
                 )}
               </Button>
             </div>
