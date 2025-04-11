@@ -115,7 +115,7 @@ const ProductForm = () => {
           const { data: productData, error: productError } = await supabase
             .from('Product')
             .select('*')
-            .eq('id', productId)
+            .eq('id', Number(productId))
             .single();
 
           if (productError) throw productError;
@@ -139,7 +139,7 @@ const ProductForm = () => {
           const { data: variantsData, error: variantsError } = await supabase
             .from('Variant')
             .select('*')
-            .eq('product', productId);
+            .eq('product', Number(productId));
 
           if (variantsError) throw variantsError;
 
@@ -238,7 +238,7 @@ const ProductForm = () => {
         const { error } = await supabase
           .from('Product')
           .update(productData)
-          .eq('id', productId);
+          .eq('id', Number(productId));
 
         if (error) {
           throw error;
@@ -298,7 +298,7 @@ const ProductForm = () => {
         id: Date.now(), // Temporary ID
         name: '',
         price: 0,
-        product: productId,
+        product: productId ? Number(productId) : null,
         isNew: true, // Flag to indicate it's a new variant
       },
     ]);
@@ -318,7 +318,7 @@ const ProductForm = () => {
       const variantData = {
         name: variant.name,
         price: Number(variant.price.toString().replace(',', '.')),
-        product: productId,
+        product: productId ? Number(productId) : null,
       };
 
       if (variant.isNew) {
@@ -451,7 +451,8 @@ const ProductForm = () => {
                   <Label htmlFor="category" className="form-label">Categoria</Label>
                   <Select 
                     onValueChange={(value) => form.setValue('category', value)} 
-                    defaultValue={product?.category?.toString()}
+                    defaultValue={product?.category?.toString() || ""}
+                    value={form.getValues('category')}
                   >
                     <SelectTrigger className="w-full">
                       <SelectValue placeholder="Selecione uma categoria" />
