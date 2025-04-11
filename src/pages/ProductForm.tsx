@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -123,11 +122,13 @@ const ProductForm = () => {
 
           setProduct(productData);
 
+          // Set form values after product data is loaded
           form.setValue('name', productData.name || "");
           form.setValue('description', productData.description || "");
           form.setValue('price', productData.price ? productData.price.toString() : "0");
           form.setValue('stockQuantity', productData.stock_quantity ? productData.stock_quantity.toString() : "0");
           form.setValue('category', productData.category ? productData.category.toString() : "");
+          // Fix for boolean toggle
           form.setValue('enabled', productData.enabled === false ? false : true);
           form.setValue('variantBoxTitle', productData.variant_box_title || "");
           form.setValue('image', productData.image || "");
@@ -152,12 +153,14 @@ const ProductForm = () => {
             description: "Não foi possível carregar os detalhes do produto. Tente novamente mais tarde.",
             variant: "destructive",
           });
+          // Navigate back to products on error to avoid broken form
+          navigate("/products");
         }
       };
 
       fetchProduct();
     }
-  }, [productId, form, toast]);
+  }, [productId, form, toast, navigate]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) {
@@ -479,10 +482,10 @@ const ProductForm = () => {
                   <div className="flex items-center space-x-2">
                     <Switch 
                       id="enabled" 
-                      checked={form.getValues("enabled")} 
+                      checked={form.watch("enabled")}
                       onCheckedChange={(checked) => form.setValue('enabled', checked)} 
                     />
-                    <span>{form.getValues("enabled") ? "Sim" : "Não"}</span>
+                    <span>{form.watch("enabled") ? "Sim" : "Não"}</span>
                   </div>
                 </div>
               </div>

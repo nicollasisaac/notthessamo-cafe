@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Coffee, Home, ShoppingBag, Tag } from 'lucide-react';
+import { Home, ShoppingBag, Tag } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 
 interface LayoutProps {
@@ -60,17 +60,6 @@ const Layout = ({ children }: LayoutProps) => {
                   <span>Categorias</span>
                 </Link>
               </li>
-              <li>
-                <Link 
-                  to="/dashboard" 
-                  className={`flex items-center gap-1 px-3 py-2 rounded-md transition-colors ${
-                    location.pathname.includes('/dashboard') ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-gray-100'
-                  }`}
-                >
-                  <Coffee className="h-4 w-4" />
-                  <span>Dashboard</span>
-                </Link>
-              </li>
             </ul>
           </nav>
         </div>
@@ -111,17 +100,6 @@ const Layout = ({ children }: LayoutProps) => {
               >
                 <Tag className="h-5 w-5" />
                 <span className="text-xs mt-1">Categorias</span>
-              </Link>
-            </li>
-            <li className="flex-1 text-center">
-              <Link 
-                to="/dashboard" 
-                className={`flex flex-col items-center py-1 px-2 rounded-md ${
-                  location.pathname.includes('/dashboard') ? 'text-primary font-medium' : 'text-gray-600'
-                }`}
-              >
-                <Coffee className="h-5 w-5" />
-                <span className="text-xs mt-1">Dashboard</span>
               </Link>
             </li>
           </ul>

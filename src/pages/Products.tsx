@@ -195,11 +195,11 @@ const Products = () => {
                         <img 
                           src={product.image} 
                           alt={product.name} 
-                          className="h-20 w-20 rounded-md object-cover" 
+                          className="h-32 w-32 rounded-md object-cover" 
                         />
                       ) : (
-                        <div className="h-20 w-20 rounded-md bg-secondary flex items-center justify-center">
-                          <Coffee className="h-8 w-8 text-muted-foreground" />
+                        <div className="h-32 w-32 rounded-md bg-secondary flex items-center justify-center">
+                          <Coffee className="h-12 w-12 text-muted-foreground" />
                         </div>
                       )}
                       <span className="truncate max-w-[150px]">{product.name}</span>
