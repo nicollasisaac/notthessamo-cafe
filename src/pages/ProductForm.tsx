@@ -116,18 +116,19 @@ const ProductForm = () => {
             .from('Product')
             .select('*')
             .eq('id', Number(productId))
-            .single();
+            .maybeSingle(); // Use maybeSingle instead of single to avoid errors
 
           if (productError) throw productError;
+          if (!productData) throw new Error('Produto não encontrado');
 
           setProduct(productData);
 
-          form.setValue('name', productData.name);
+          form.setValue('name', productData.name || "");
           form.setValue('description', productData.description || "");
-          form.setValue('price', productData.price.toString());
-          form.setValue('stockQuantity', productData.stock_quantity.toString());
+          form.setValue('price', productData.price ? productData.price.toString() : "0");
+          form.setValue('stockQuantity', productData.stock_quantity ? productData.stock_quantity.toString() : "0");
           form.setValue('category', productData.category ? productData.category.toString() : "");
-          form.setValue('enabled', productData.enabled);
+          form.setValue('enabled', productData.enabled === false ? false : true);
           form.setValue('variantBoxTitle', productData.variant_box_title || "");
           form.setValue('image', productData.image || "");
           
@@ -277,7 +278,7 @@ const ProductForm = () => {
       console.error("Error saving product:", error.message);
       toast({
         title: "Erro ao salvar produto",
-        description: "Ocorreu um erro ao salvar o produto. Tente novamente mais tarde.",
+        description: error.message || "Ocorreu um erro ao salvar o produto. Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -359,7 +360,7 @@ const ProductForm = () => {
       console.error("Error saving variant:", error.message);
       toast({
         title: "Erro ao salvar variante",
-        description: "Ocorreu um erro ao salvar a variante. Tente novamente mais tarde.",
+        description: error.message || "Ocorreu um erro ao salvar a variante. Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -370,10 +371,13 @@ const ProductForm = () => {
   const deleteVariant = async (id: any) => {
     try {
       setIsSubmitting(true);
-      const { error } = await supabase.from('Variant').delete().eq('id', id);
+      // Only delete from database if it's not a new variant
+      if (!variants.find(v => v.id === id)?.isNew) {
+        const { error } = await supabase.from('Variant').delete().eq('id', id);
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
       }
 
       // Remove the variant from the state
@@ -386,7 +390,7 @@ const ProductForm = () => {
       console.error("Error deleting variant:", error.message);
       toast({
         title: "Erro ao remover variante",
-        description: "Ocorreu um erro ao remover a variante. Tente novamente mais tarde.",
+        description: error.message || "Ocorreu um erro ao remover a variante. Tente novamente mais tarde.",
         variant: "destructive",
       });
     } finally {
@@ -592,7 +596,7 @@ const ProductForm = () => {
                     type="text"
                     className="form-input"
                     placeholder="Nome"
-                    value={variant.name}
+                    value={variant.name || ''}
                     onChange={(e) => updateVariant(variant.id, 'name', e.target.value)}
                   />
                 </div>
@@ -603,7 +607,7 @@ const ProductForm = () => {
                     type="text"
                     className="form-input"
                     placeholder="Preço"
-                    value={variant.price}
+                    value={variant.price || 0}
                     onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
                   />
                 </div>
