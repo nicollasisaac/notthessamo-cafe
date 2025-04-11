@@ -126,7 +126,7 @@ const ProductForm = () => {
           form.setValue('description', productData.description || "");
           form.setValue('price', productData.price.toString());
           form.setValue('stockQuantity', productData.stock_quantity.toString());
-          form.setValue('category', productData.category.toString());
+          form.setValue('category', productData.category ? productData.category.toString() : "");
           form.setValue('enabled', productData.enabled);
           form.setValue('variantBoxTitle', productData.variant_box_title || "");
           form.setValue('image', productData.image || "");
@@ -139,7 +139,7 @@ const ProductForm = () => {
           const { data: variantsData, error: variantsError } = await supabase
             .from('Variant')
             .select('*')
-            .eq('product_id', productId);
+            .eq('product', productId);
 
           if (variantsError) throw variantsError;
 
@@ -298,7 +298,7 @@ const ProductForm = () => {
         id: Date.now(), // Temporary ID
         name: '',
         price: 0,
-        product_id: productId,
+        product: productId,
         isNew: true, // Flag to indicate it's a new variant
       },
     ]);
@@ -318,7 +318,7 @@ const ProductForm = () => {
       const variantData = {
         name: variant.name,
         price: Number(variant.price.toString().replace(',', '.')),
-        product_id: productId,
+        product: productId,
       };
 
       if (variant.isNew) {
@@ -492,7 +492,7 @@ const ProductForm = () => {
                           <img 
                             src={imagePreview} 
                             alt="Preview" 
-                            className="w-full h-auto max-h-64 object-contain rounded-md" 
+                            className="w-full h-auto max-h-80 object-contain rounded-md" 
                           />
                           <Button 
                             type="button" 
@@ -512,7 +512,7 @@ const ProductForm = () => {
                       </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
-                        <Image className="h-12 w-12 text-gray-400 mb-2" />
+                        <Image className="h-16 w-16 text-gray-400 mb-2" />
                         <p className="text-sm text-gray-500 mb-4">Clique para adicionar uma imagem</p>
                         <Input 
                           type="file" 

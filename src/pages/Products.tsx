@@ -195,10 +195,10 @@ const Products = () => {
                         <img 
                           src={product.image} 
                           alt={product.name} 
-                          className="h-16 w-16 rounded-md object-cover" 
+                          className="h-20 w-20 rounded-md object-cover" 
                         />
                       ) : (
-                        <div className="h-16 w-16 rounded-md bg-secondary flex items-center justify-center">
+                        <div className="h-20 w-20 rounded-md bg-secondary flex items-center justify-center">
                           <Coffee className="h-8 w-8 text-muted-foreground" />
                         </div>
                       )}
