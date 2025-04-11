@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Plus, Pencil, Loader2, Filter, Coffee } from 'lucide-react';
-import { supabase, Product, Category } from '../config/database';
+import { supabase } from '@/integrations/supabase/client';
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { 
@@ -17,8 +17,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const Products = () => {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [categories, setCategories] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const { toast } = useToast();
@@ -90,7 +90,7 @@ const Products = () => {
     }
   };
 
-  const handleToggleEnabled = async (product: Product) => {
+  const handleToggleEnabled = async (product: any) => {
     try {
       const { error } = await supabase
         .from('Product')
@@ -174,11 +174,11 @@ const Products = () => {
           </Button>
         </div>
       ) : (
-        <div className="border rounded-md">
+        <div className="border rounded-md overflow-hidden">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Produto</TableHead>
+                <TableHead className="w-1/4">Produto</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Preço</TableHead>
                 <TableHead>Estoque</TableHead>
@@ -195,14 +195,14 @@ const Products = () => {
                         <img 
                           src={product.image} 
                           alt={product.name} 
-                          className="h-10 w-10 rounded-md object-cover" 
+                          className="h-16 w-16 rounded-md object-cover" 
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-md bg-secondary flex items-center justify-center">
-                          <Coffee className="h-5 w-5 text-muted-foreground" />
+                        <div className="h-16 w-16 rounded-md bg-secondary flex items-center justify-center">
+                          <Coffee className="h-8 w-8 text-muted-foreground" />
                         </div>
                       )}
-                      <span>{product.name}</span>
+                      <span className="truncate max-w-[150px]">{product.name}</span>
                     </div>
                   </TableCell>
                   <TableCell>{product.categoryName || '-'}</TableCell>
