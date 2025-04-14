@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -19,7 +18,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlusCircle, XCircle, Upload, Image } from 'lucide-react';
+import { PlusCircle, XCircle, Upload, Image, Loader2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,7 +29,6 @@ const formSchema = z.object({
   description: z.string().optional(),
   price: z.string().refine((value) => {
     try {
-      // Substitui vírgula por ponto e tenta converter para número
       const numberValue = Number(value.replace(',', '.'));
       return !isNaN(numberValue) && numberValue > 0;
     } catch (error) {
@@ -115,25 +113,18 @@ const ProductForm = () => {
         try {
           const { data: productData, error: productError } = await supabase
             .from('Product')
-            .select('*')
+            .select('*, Category(name)')
             .eq('id', Number(productId))
             .maybeSingle();
 
           if (productError) throw productError;
           if (!productData) throw new Error('Produto não encontrado');
 
-          console.log("Fetched product data:", productData);
-          setProduct(productData);
-
-          // Set form values after product data is loaded
           form.setValue('name', productData.name || "");
           form.setValue('description', productData.description || "");
           form.setValue('price', productData.price ? productData.price.toString() : "0");
           form.setValue('stockQuantity', productData.stock_quantity ? productData.stock_quantity.toString() : "0");
-          if (productData.category) {
-            form.setValue('category', productData.category.toString());
-          }
-          // Fix for boolean toggle
+          form.setValue('category', productData.category ? productData.category.toString() : "");
           form.setValue('enabled', productData.enabled === false ? false : true);
           form.setValue('variantBoxTitle', productData.variant_box_title || "");
           form.setValue('image', productData.image || "");
@@ -142,30 +133,29 @@ const ProductForm = () => {
             setImagePreview(productData.image);
           }
 
-          // Fetch variants
-          const { data: variantsData, error: variantsError } = await supabase
-            .from('Variant')
-            .select('*')
-            .eq('product', Number(productId));
+          if (productId) {
+            const { data: variantsData, error: variantsError } = await supabase
+              .from('Variant')
+              .select('*')
+              .eq('product', Number(productId));
 
-          if (variantsError) throw variantsError;
-
-          setVariants(variantsData || []);
+            if (variantsError) throw variantsError;
+            setVariants(variantsData || []);
+          }
         } catch (error: any) {
-          console.error("Error fetching product:", error.message);
+          console.error("Error fetching product:", error);
           toast({
             title: "Erro ao carregar produto",
             description: "Não foi possível carregar os detalhes do produto. Tente novamente mais tarde.",
             variant: "destructive",
           });
-          // Navigate back to products on error to avoid broken form
           navigate("/products");
         }
       };
 
       fetchProduct();
     }
-  }, [productId, form, toast, navigate]);
+  }, [productId, form, navigate, toast]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) {
@@ -175,7 +165,6 @@ const ProductForm = () => {
     const file = e.target.files[0];
     setImageFile(file);
     
-    // Create a preview URL
     const previewURL = URL.createObjectURL(file);
     setImagePreview(previewURL);
   };
@@ -186,35 +175,11 @@ const ProductForm = () => {
     setUploading(true);
     
     try {
-      // Format a unique file path
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `products/${fileName}`;
       
-      // Check if images bucket exists
-      const { data: buckets } = await supabase.storage.listBuckets();
-      let imagesBucketExists = buckets?.some(bucket => bucket.name === 'images');
-      
-      // Create images bucket if it doesn't exist
-      if (!imagesBucketExists) {
-        try {
-          const { error } = await supabase.storage.createBucket('images', {
-            public: true,
-            fileSizeLimit: 10485760, // 10MB
-          });
-          
-          if (error) {
-            console.error('Error creating images bucket:', error);
-            throw error;
-          }
-        } catch (error) {
-          console.error('Error creating bucket:', error);
-          // Continue with upload attempt even if bucket creation fails
-          // It might already exist but not be accessible to the current user
-        }
-      }
-      
-      const { error: uploadError } = await supabase.storage
+      const { error: uploadError, data } = await supabase.storage
         .from('images')
         .upload(filePath, imageFile, {
           upsert: true
@@ -224,14 +189,13 @@ const ProductForm = () => {
         throw uploadError;
       }
       
-      // Get the public URL
-      const { data } = supabase.storage
+      const { data: { publicUrl } } = supabase.storage
         .from('images')
         .getPublicUrl(filePath);
         
-      return data.publicUrl;
+      return publicUrl;
     } catch (error: any) {
-      console.error("Error uploading image:", error.message);
+      console.error("Error uploading image:", error);
       toast({
         title: "Erro ao fazer upload da imagem",
         description: error.message,
@@ -247,7 +211,6 @@ const ProductForm = () => {
     try {
       setIsSubmitting(true);
       
-      // Upload image if there's a new file
       let imageUrl = data.image;
       if (imageFile) {
         const uploadedUrl = await uploadImage();
@@ -268,8 +231,6 @@ const ProductForm = () => {
         updated_at: new Date().toISOString(),
       };
 
-      console.log("Saving product data:", productData);
-
       if (productId) {
         const { error } = await supabase
           .from('Product')
@@ -284,25 +245,20 @@ const ProductForm = () => {
           title: "Produto atualizado com sucesso!",
         });
       } else {
-        const { data: newProduct, error } = await supabase
+        const { error } = await supabase
           .from('Product')
-          .insert([
-            {
-              ...productData,
-              created_at: new Date().toISOString(),
-            },
-          ])
-          .select();
+          .insert([{
+            ...productData,
+            created_at: new Date().toISOString(),
+          }]);
 
         if (error) {
-          console.error("Error saving product:", error);
-          if (error.message.includes("duplicate key")) {
+          if (error.message.includes("violates foreign key constraint")) {
             toast({
               title: "Erro ao salvar produto",
-              description: "Já existe um produto com esse nome. Por favor, use um nome diferente.",
+              description: "Por favor, selecione uma categoria válida.",
               variant: "destructive",
             });
-            setIsSubmitting(false);
             return;
           }
           throw error;
@@ -311,17 +267,11 @@ const ProductForm = () => {
         toast({
           title: "Produto criado com sucesso!",
         });
-
-        // If creating a new product, navigate to the edit page
-        if (newProduct && newProduct.length > 0) {
-          navigate(`/products/edit/${newProduct[0].id}`);
-          return;
-        }
       }
 
       navigate("/products");
     } catch (error: any) {
-      console.error("Error saving product:", error.message);
+      console.error("Error saving product:", error);
       toast({
         title: "Erro ao salvar produto",
         description: error.message || "Ocorreu um erro ao salvar o produto. Tente novamente mais tarde.",
@@ -342,11 +292,11 @@ const ProductForm = () => {
     setVariants([
       ...variants,
       {
-        id: Date.now(), // Temporary ID
+        id: Date.now(),
         name: '',
         price: 0,
         product: productId ? Number(productId) : null,
-        isNew: true, // Flag to indicate it's a new variant
+        isNew: true,
       },
     ]);
   };
@@ -378,7 +328,6 @@ const ProductForm = () => {
           throw error;
         }
 
-        // Update the variant in the state with the actual ID from the database
         setVariants(
           variants.map((v) =>
             v.id === variant.id ? { ...data[0], isNew: false } : v
@@ -417,7 +366,6 @@ const ProductForm = () => {
   const deleteVariant = async (id: any) => {
     try {
       setIsSubmitting(true);
-      // Only delete from database if it's not a new variant
       if (!variants.find(v => v.id === id)?.isNew) {
         const { error } = await supabase.from('Variant').delete().eq('id', id);
 
@@ -426,7 +374,6 @@ const ProductForm = () => {
         }
       }
 
-      // Remove the variant from the state
       setVariants(variants.filter((variant) => variant.id !== id));
 
       toast({
