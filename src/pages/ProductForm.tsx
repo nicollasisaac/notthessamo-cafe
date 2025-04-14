@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -49,6 +50,8 @@ const formSchema = z.object({
   }),
   category: z.string({
     required_error: "Por favor, selecione uma categoria.",
+  }).refine(value => value !== "0" && value !== "", {
+    message: "Por favor, selecione uma categoria válida."
   }),
   enabled: z.boolean().default(true),
   variantBoxTitle: z.string().optional(),
@@ -179,10 +182,28 @@ const ProductForm = () => {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `products/${fileName}`;
       
-      const { error: uploadError, data } = await supabase.storage
+      // Check if bucket exists
+      const { data: buckets, error: bucketsError } = await supabase
+        .storage
+        .listBuckets();
+        
+      if (bucketsError) throw bucketsError;
+      
+      // If images bucket doesn't exist, create it
+      const imagesBucketExists = buckets.some(bucket => bucket.name === 'images');
+      if (!imagesBucketExists) {
+        const { error: createBucketError } = await supabase
+          .storage
+          .createBucket('images', { public: true });
+          
+        if (createBucketError) throw createBucketError;
+      }
+      
+      const { error: uploadError } = await supabase.storage
         .from('images')
         .upload(filePath, imageFile, {
-          upsert: true
+          upsert: true,
+          contentType: imageFile.type
         });
         
       if (uploadError) {
@@ -211,6 +232,17 @@ const ProductForm = () => {
     try {
       setIsSubmitting(true);
       
+      // Ensure category is a valid number
+      const categoryId = parseInt(data.category);
+      if (isNaN(categoryId) || categoryId <= 0) {
+        toast({
+          title: "Erro ao salvar produto",
+          description: "Por favor, selecione uma categoria válida.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       let imageUrl = data.image;
       if (imageFile) {
         const uploadedUrl = await uploadImage();
@@ -224,7 +256,7 @@ const ProductForm = () => {
         description: data.description || '',
         price: Number(data.price.replace(',', '.')),
         stock_quantity: Number(data.stockQuantity),
-        category: Number(data.category),
+        category: categoryId,
         enabled: data.enabled,
         variant_box_title: data.variantBoxTitle || '',
         image: imageUrl || '',
@@ -563,6 +595,7 @@ const ProductForm = () => {
               </div>
               
               <Button type="submit" disabled={isSubmitting || uploading} className="w-full md:w-auto">
+                {(isSubmitting || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting || uploading ? "Salvando..." : "Salvar Produto"}
               </Button>
             </form>
