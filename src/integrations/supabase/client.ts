@@ -11,27 +11,5 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// Create storage bucket for images if it doesn't exist yet
-(async () => {
-  try {
-    // Check if the images bucket exists
-    const { data: buckets } = await supabase.storage.listBuckets();
-    const imagesBucketExists = buckets?.some(bucket => bucket.name === 'images');
-    
-    // If the images bucket doesn't exist, create it
-    if (!imagesBucketExists) {
-      const { error } = await supabase.storage.createBucket('images', {
-        public: true,
-        fileSizeLimit: 10485760, // 10MB
-      });
-      
-      if (error) {
-        console.error('Error creating images bucket:', error);
-      } else {
-        console.log('Images bucket created successfully');
-      }
-    }
-  } catch (error) {
-    console.error('Error checking/creating storage bucket:', error);
-  }
-})();
+// We disable the automatic bucket creation on startup since it causes RLS policy errors
+// and the bucket will be created on demand when needed in the ProductForm component

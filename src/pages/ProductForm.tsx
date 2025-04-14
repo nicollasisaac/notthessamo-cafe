@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -7,6 +8,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -40,15 +49,8 @@ const formSchema = z.object({
   }, {
     message: "A quantidade em estoque deve ser um número inteiro não negativo.",
   }),
-  category: z.string().refine((value) => {
-    try {
-      const numberValue = Number(value);
-      return !isNaN(numberValue) && numberValue > 0;
-    } catch (error) {
-      return false;
-    }
-  }, {
-    message: "Selecione uma categoria válida.",
+  category: z.string({
+    required_error: "Por favor, selecione uma categoria.",
   }),
   enabled: z.boolean().default(true),
   variantBoxTitle: z.string().optional(),
@@ -115,11 +117,12 @@ const ProductForm = () => {
             .from('Product')
             .select('*')
             .eq('id', Number(productId))
-            .maybeSingle(); // Use maybeSingle instead of single to avoid errors
+            .maybeSingle();
 
           if (productError) throw productError;
           if (!productData) throw new Error('Produto não encontrado');
 
+          console.log("Fetched product data:", productData);
           setProduct(productData);
 
           // Set form values after product data is loaded
@@ -127,7 +130,9 @@ const ProductForm = () => {
           form.setValue('description', productData.description || "");
           form.setValue('price', productData.price ? productData.price.toString() : "0");
           form.setValue('stockQuantity', productData.stock_quantity ? productData.stock_quantity.toString() : "0");
-          form.setValue('category', productData.category ? productData.category.toString() : "");
+          if (productData.category) {
+            form.setValue('category', productData.category.toString());
+          }
           // Fix for boolean toggle
           form.setValue('enabled', productData.enabled === false ? false : true);
           form.setValue('variantBoxTitle', productData.variant_box_title || "");
@@ -186,9 +191,34 @@ const ProductForm = () => {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `products/${fileName}`;
       
+      // Check if images bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      let imagesBucketExists = buckets?.some(bucket => bucket.name === 'images');
+      
+      // Create images bucket if it doesn't exist
+      if (!imagesBucketExists) {
+        try {
+          const { error } = await supabase.storage.createBucket('images', {
+            public: true,
+            fileSizeLimit: 10485760, // 10MB
+          });
+          
+          if (error) {
+            console.error('Error creating images bucket:', error);
+            throw error;
+          }
+        } catch (error) {
+          console.error('Error creating bucket:', error);
+          // Continue with upload attempt even if bucket creation fails
+          // It might already exist but not be accessible to the current user
+        }
+      }
+      
       const { error: uploadError } = await supabase.storage
         .from('images')
-        .upload(filePath, imageFile);
+        .upload(filePath, imageFile, {
+          upsert: true
+        });
         
       if (uploadError) {
         throw uploadError;
@@ -228,15 +258,17 @@ const ProductForm = () => {
       
       const productData = {
         name: data.name,
-        description: data.description,
+        description: data.description || '',
         price: Number(data.price.replace(',', '.')),
         stock_quantity: Number(data.stockQuantity),
         category: Number(data.category),
         enabled: data.enabled,
-        variant_box_title: data.variantBoxTitle,
-        image: imageUrl,
+        variant_box_title: data.variantBoxTitle || '',
+        image: imageUrl || '',
         updated_at: new Date().toISOString(),
       };
+
+      console.log("Saving product data:", productData);
 
       if (productId) {
         const { error } = await supabase
@@ -263,6 +295,16 @@ const ProductForm = () => {
           .select();
 
         if (error) {
+          console.error("Error saving product:", error);
+          if (error.message.includes("duplicate key")) {
+            toast({
+              title: "Erro ao salvar produto",
+              description: "Já existe um produto com esse nome. Por favor, use um nome diferente.",
+              variant: "destructive",
+            });
+            setIsSubmitting(false);
+            return;
+          }
           throw error;
         }
 
@@ -273,6 +315,7 @@ const ProductForm = () => {
         // If creating a new product, navigate to the edit page
         if (newProduct && newProduct.length > 0) {
           navigate(`/products/edit/${newProduct[0].id}`);
+          return;
         }
       }
 
@@ -410,165 +453,173 @@ const ProductForm = () => {
           <CardTitle>Informações do Produto</CardTitle>
         </CardHeader>
         <CardContent>
-          <form onSubmit={form.handleSubmit(saveProduct)} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="name" className="form-label">Nome do Produto</Label>
-                  <Input id="name" type="text" className="form-input" placeholder="Nome do produto" {...form.register("name")} />
-                  {form.formState.errors.name && (
-                    <p className="text-red-500 text-sm mt-1">{form.formState.errors.name.message}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="description" className="form-label">Descrição</Label>
-                  <Textarea id="description" className="form-input" placeholder="Descrição do produto" {...form.register("description")} />
-                </div>
-                
-                <div>
-                  <Label htmlFor="price" className="form-label">Preço</Label>
-                  <Input
-                    id="price"
-                    type="text"
-                    className="form-input"
-                    placeholder="Preço do produto"
-                    {...form.register("price")}
-                  />
-                  {form.formState.errors.price && (
-                    <p className="text-red-500 text-sm mt-1">{form.formState.errors.price.message}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="stockQuantity" className="form-label">Quantidade em Estoque</Label>
-                  <Input
-                    id="stockQuantity"
-                    type="text"
-                    className="form-input"
-                    placeholder="Quantidade em estoque"
-                    {...form.register("stockQuantity")}
-                  />
-                  {form.formState.errors.stockQuantity && (
-                    <p className="text-red-500 text-sm mt-1">{form.formState.errors.stockQuantity.message}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="category" className="form-label">Categoria</Label>
-                  <Select 
-                    onValueChange={(value) => form.setValue('category', value)} 
-                    defaultValue={product?.category?.toString() || ""}
-                    value={form.getValues('category')}
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Selecione uma categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id.toString()}>
-                          {category.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  {form.formState.errors.category && (
-                    <p className="text-red-500 text-sm mt-1">{form.formState.errors.category.message}</p>
-                  )}
-                </div>
-                
-                <div>
-                  <Label htmlFor="enabled" className="form-label">Ativo</Label>
-                  <div className="flex items-center space-x-2">
-                    <Switch 
-                      id="enabled" 
-                      checked={form.watch("enabled")}
-                      onCheckedChange={(checked) => form.setValue('enabled', checked)} 
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(saveProduct)} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="name" className="form-label">Nome do Produto</Label>
+                    <Input id="name" type="text" className="form-input" placeholder="Nome do produto" {...form.register("name")} />
+                    {form.formState.errors.name && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.name.message}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="description" className="form-label">Descrição</Label>
+                    <Textarea id="description" className="form-input" placeholder="Descrição do produto" {...form.register("description")} />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="price" className="form-label">Preço</Label>
+                    <Input
+                      id="price"
+                      type="text"
+                      className="form-input"
+                      placeholder="Preço do produto"
+                      {...form.register("price")}
                     />
-                    <span>{form.watch("enabled") ? "Sim" : "Não"}</span>
+                    {form.formState.errors.price && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.price.message}</p>
+                    )}
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="stockQuantity" className="form-label">Quantidade em Estoque</Label>
+                    <Input
+                      id="stockQuantity"
+                      type="text"
+                      className="form-input"
+                      placeholder="Quantidade em estoque"
+                      {...form.register("stockQuantity")}
+                    />
+                    {form.formState.errors.stockQuantity && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.stockQuantity.message}</p>
+                    )}
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name="category"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Categoria</FormLabel>
+                        <Select 
+                          onValueChange={field.onChange} 
+                          defaultValue={field.value}
+                          value={field.value}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione uma categoria" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {categories.map((category) => (
+                              <SelectItem key={category.id} value={category.id.toString()}>
+                                {category.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div>
+                    <Label htmlFor="enabled" className="form-label">Ativo</Label>
+                    <div className="flex items-center space-x-2">
+                      <Switch 
+                        id="enabled" 
+                        checked={form.watch("enabled")}
+                        onCheckedChange={(checked) => form.setValue('enabled', checked)} 
+                      />
+                      <span>{form.watch("enabled") ? "Sim" : "Não"}</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div>
+                    <Label className="form-label">Imagem do Produto</Label>
+                    <div className="border rounded-md p-4 space-y-4">
+                      {imagePreview ? (
+                        <div className="space-y-3">
+                          <div className="relative">
+                            <img 
+                              src={imagePreview} 
+                              alt="Preview" 
+                              className="w-full h-auto max-h-80 object-contain rounded-md" 
+                            />
+                            <Button 
+                              type="button" 
+                              variant="destructive" 
+                              size="sm" 
+                              className="absolute top-2 right-2" 
+                              onClick={removeImage}
+                            >
+                              <XCircle className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <Input 
+                            type="hidden" 
+                            {...form.register("image")} 
+                            value={imagePreview} 
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
+                          <Image className="h-16 w-16 text-gray-400 mb-2" />
+                          <p className="text-sm text-gray-500 mb-4">Clique para adicionar uma imagem</p>
+                          <Input 
+                            type="file" 
+                            id="image" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleImageChange} 
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => document.getElementById('image')?.click()}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Escolher Imagem
+                          </Button>
+                        </div>
+                      )}
+                      
+                      {imagePreview && (
+                        <div>
+                          <Input 
+                            type="file" 
+                            id="image" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleImageChange} 
+                          />
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            className="w-full" 
+                            onClick={() => document.getElementById('image')?.click()}
+                          >
+                            <Upload className="mr-2 h-4 w-4" />
+                            Trocar Imagem
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
               
-              <div className="space-y-4">
-                <div>
-                  <Label className="form-label">Imagem do Produto</Label>
-                  <div className="border rounded-md p-4 space-y-4">
-                    {imagePreview ? (
-                      <div className="space-y-3">
-                        <div className="relative">
-                          <img 
-                            src={imagePreview} 
-                            alt="Preview" 
-                            className="w-full h-auto max-h-80 object-contain rounded-md" 
-                          />
-                          <Button 
-                            type="button" 
-                            variant="destructive" 
-                            size="sm" 
-                            className="absolute top-2 right-2" 
-                            onClick={removeImage}
-                          >
-                            <XCircle className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <Input 
-                          type="hidden" 
-                          {...form.register("image")} 
-                          value={imagePreview} 
-                        />
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
-                        <Image className="h-16 w-16 text-gray-400 mb-2" />
-                        <p className="text-sm text-gray-500 mb-4">Clique para adicionar uma imagem</p>
-                        <Input 
-                          type="file" 
-                          id="image" 
-                          accept="image/*" 
-                          className="hidden" 
-                          onChange={handleImageChange} 
-                        />
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          onClick={() => document.getElementById('image')?.click()}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          Escolher Imagem
-                        </Button>
-                      </div>
-                    )}
-                    
-                    {imagePreview && (
-                      <div>
-                        <Input 
-                          type="file" 
-                          id="image" 
-                          accept="image/*" 
-                          className="hidden" 
-                          onChange={handleImageChange} 
-                        />
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          className="w-full" 
-                          onClick={() => document.getElementById('image')?.click()}
-                        >
-                          <Upload className="mr-2 h-4 w-4" />
-                          Trocar Imagem
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <Button type="submit" disabled={isSubmitting || uploading} className="w-full md:w-auto">
-              {isSubmitting || uploading ? "Salvando..." : "Salvar Produto"}
-            </Button>
-          </form>
+              <Button type="submit" disabled={isSubmitting || uploading} className="w-full md:w-auto">
+                {isSubmitting || uploading ? "Salvando..." : "Salvar Produto"}
+              </Button>
+            </form>
+          </Form>
         </CardContent>
       </Card>
 
