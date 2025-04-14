@@ -11,5 +11,5 @@ const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiO
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
 
-// We disable the automatic bucket creation since it causes RLS policy errors
-// Images will be handled differently in the ProductForm
+// We disable the automatic bucket creation on startup since it causes RLS policy errors
+// and the bucket will be created on demand when needed in the ProductForm component

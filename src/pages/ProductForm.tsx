@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -129,18 +130,15 @@ const ProductForm = () => {
           form.setValue('description', productData.description || "");
           form.setValue('price', productData.price ? productData.price.toString() : "0");
           form.setValue('stockQuantity', productData.stock_quantity ? productData.stock_quantity.toString() : "0");
-          
-          // Ensure category is set correctly - convert to string
           if (productData.category) {
-            form.setValue('category', String(productData.category));
+            form.setValue('category', productData.category.toString());
           }
-          
           // Fix for boolean toggle
           form.setValue('enabled', productData.enabled === false ? false : true);
           form.setValue('variantBoxTitle', productData.variant_box_title || "");
+          form.setValue('image', productData.image || "");
           
           if (productData.image) {
-            form.setValue('image', productData.image);
             setImagePreview(productData.image);
           }
 
@@ -193,32 +191,50 @@ const ProductForm = () => {
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `products/${fileName}`;
       
-      // Use public URL as fallback if storage bucket operations fail
-      // Upload directly without bucket creation attempts (which are failing)
-      const { error: uploadError, data } = await supabase.storage
+      // Check if images bucket exists
+      const { data: buckets } = await supabase.storage.listBuckets();
+      let imagesBucketExists = buckets?.some(bucket => bucket.name === 'images');
+      
+      // Create images bucket if it doesn't exist
+      if (!imagesBucketExists) {
+        try {
+          const { error } = await supabase.storage.createBucket('images', {
+            public: true,
+            fileSizeLimit: 10485760, // 10MB
+          });
+          
+          if (error) {
+            console.error('Error creating images bucket:', error);
+            throw error;
+          }
+        } catch (error) {
+          console.error('Error creating bucket:', error);
+          // Continue with upload attempt even if bucket creation fails
+          // It might already exist but not be accessible to the current user
+        }
+      }
+      
+      const { error: uploadError } = await supabase.storage
         .from('images')
         .upload(filePath, imageFile, {
-          upsert: true,
-          cacheControl: '3600'
+          upsert: true
         });
         
       if (uploadError) {
-        console.error("Upload error:", uploadError);
-        // Try a different approach or fallback if needed
         throw uploadError;
       }
       
-      // Get the public URL after successful upload
-      const { data: urlData } = supabase.storage
+      // Get the public URL
+      const { data } = supabase.storage
         .from('images')
         .getPublicUrl(filePath);
         
-      return urlData.publicUrl;
+      return data.publicUrl;
     } catch (error: any) {
       console.error("Error uploading image:", error.message);
       toast({
         title: "Erro ao fazer upload da imagem",
-        description: "Não foi possível fazer o upload da imagem. A imagem não será salva.",
+        description: error.message,
         variant: "destructive",
       });
       return null;
@@ -232,26 +248,11 @@ const ProductForm = () => {
       setIsSubmitting(true);
       
       // Upload image if there's a new file
-      let imageUrl = data.image || '';
+      let imageUrl = data.image;
       if (imageFile) {
         const uploadedUrl = await uploadImage();
         if (uploadedUrl) {
           imageUrl = uploadedUrl;
-        }
-      }
-      
-      // Make sure category is a number when saving to database
-      let categoryId: number | null = null;
-      if (data.category) {
-        categoryId = parseInt(data.category, 10);
-        if (isNaN(categoryId)) {
-          toast({
-            title: "Erro ao salvar produto",
-            description: "Categoria inválida. Por favor, selecione uma categoria válida.",
-            variant: "destructive",
-          });
-          setIsSubmitting(false);
-          return;
         }
       }
       
@@ -260,10 +261,10 @@ const ProductForm = () => {
         description: data.description || '',
         price: Number(data.price.replace(',', '.')),
         stock_quantity: Number(data.stockQuantity),
-        category: categoryId, // Use parsed integer
+        category: Number(data.category),
         enabled: data.enabled,
         variant_box_title: data.variantBoxTitle || '',
-        image: imageUrl,
+        image: imageUrl || '',
         updated_at: new Date().toISOString(),
       };
 
@@ -505,6 +506,7 @@ const ProductForm = () => {
                         <FormLabel>Categoria</FormLabel>
                         <Select 
                           onValueChange={field.onChange} 
+                          defaultValue={field.value}
                           value={field.value}
                         >
                           <FormControl>
@@ -514,7 +516,7 @@ const ProductForm = () => {
                           </FormControl>
                           <SelectContent>
                             {categories.map((category) => (
-                              <SelectItem key={category.id} value={String(category.id)}>
+                              <SelectItem key={category.id} value={category.id.toString()}>
                                 {category.name}
                               </SelectItem>
                             ))}
