@@ -165,11 +165,13 @@ const ProductForm = () => {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
+  
     const file = e.target.files[0];
+    console.log("Imagem selecionada:", file); // 🔍 log importante
     setImageFile(file);
     setImagePreview(URL.createObjectURL(file));
   };
-
+  
   const uploadImage = async () => {
     if (!imageFile) return null;
     setUploading(true);
@@ -177,24 +179,22 @@ const ProductForm = () => {
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `products/${fileName}`;
-
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      if (bucketsError) throw bucketsError;
-
-      const imagesBucketExists = buckets.some(bucket => bucket.name === 'images');
-      if (!imagesBucketExists) {
-        const { error: createBucketError } = await supabase.storage.createBucket('images', { public: true });
-        if (createBucketError) throw createBucketError;
-      }
-
-      const { error: uploadError } = await supabase.storage.from('images').upload(filePath, imageFile, {
-        upsert: true,
-        contentType: imageFile.type
-      });
-
+  
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(filePath, imageFile, {
+          upsert: true,
+          contentType: imageFile.type,
+        });
+  
       if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
+  
+      const { publicUrl } = supabase
+        .storage
+        .from('images')
+        .getPublicUrl(filePath).data;
+  
+      console.log("✅ Public URL retornado:", publicUrl);
       return publicUrl;
     } catch (error: any) {
       console.error("Error uploading image:", error);
@@ -209,9 +209,11 @@ const ProductForm = () => {
     }
   };
 
+  
   const saveProduct = async (data: z.infer<typeof formSchema>) => {
     try {
       setIsSubmitting(true);
+  
       const categoryId = parseInt(data.category);
       if (isNaN(categoryId) || categoryId <= 0) {
         toast({
@@ -221,16 +223,19 @@ const ProductForm = () => {
         });
         return;
       }
-
-      let imageUrl = data.image;
+  
+      // ✅ Garantir que vamos usar o valor atualizado do campo image
+      let imageUrl = form.getValues("image");
+  
       if (imageFile) {
         const uploadedUrl = await uploadImage();
         console.log("Uploaded image URL:", uploadedUrl);
         if (uploadedUrl) {
           imageUrl = uploadedUrl;
+          form.setValue("image", uploadedUrl); // garante que o form também saiba
         }
       }
-
+  
       const productData = {
         name: data.name,
         description: data.description || '',
@@ -242,19 +247,28 @@ const ProductForm = () => {
         image: imageUrl || '',
         updated_at: new Date().toISOString(),
       };
-
-      console.log("Product being saved:", productData);
-
+  
+      console.log("Product being saved:", productData); // debug útil
+  
       if (productId) {
-        const { error } = await supabase.from('Product').update(productData).eq('id', Number(productId));
+        const { error } = await supabase
+          .from('Product')
+          .update(productData)
+          .eq('id', Number(productId));
+  
         if (error) throw error;
+  
         toast({ title: "Produto atualizado com sucesso!" });
       } else {
-        const { error } = await supabase.from('Product').insert([{ ...productData, created_at: new Date().toISOString() }]);
+        const { error } = await supabase
+          .from('Product')
+          .insert([{ ...productData, created_at: new Date().toISOString() }]);
+  
         if (error) throw error;
+  
         toast({ title: "Produto criado com sucesso!" });
       }
-
+  
       navigate("/products");
     } catch (error: any) {
       console.error("Error saving product:", error);
@@ -267,6 +281,7 @@ const ProductForm = () => {
       setIsSubmitting(false);
     }
   };
+  
 
   const removeImage = () => {
     setImageFile(null);
