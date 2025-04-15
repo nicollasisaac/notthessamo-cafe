@@ -1,7 +1,8 @@
 
 import React from 'react';
-import { Home, ShoppingBag, Tag } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Home, ShoppingBag, Tag, LogOut } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -9,7 +10,13 @@ interface LayoutProps {
 
 const Layout = ({ children }: LayoutProps) => {
   const location = useLocation();
+  const navigate = useNavigate();
   
+  const handleLogout = () => {
+    localStorage.removeItem('isAuthenticated');
+    navigate('/login');
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Header */}
@@ -18,15 +25,15 @@ const Layout = ({ children }: LayoutProps) => {
           <div className="flex items-center gap-2">
             <img 
               src="https://framerusercontent.com/images/AFbK2JQrK2exSW8HvSoiZnBDYY.svg" 
-              alt="Nothessamo Cafe Logo" 
+              alt="Notthesamo Cafe Logo" 
               className="h-10 w-auto"
             />
-            <h1 className="text-xl font-bold hidden md:block">Nothessamo Cafe</h1>
+            <h1 className="text-xl font-bold hidden md:block">Notthesamo Cafe</h1>
           </div>
           
           {/* Desktop menu */}
           <nav className="hidden md:block">
-            <ul className="flex space-x-6">
+            <ul className="flex space-x-6 items-center">
               <li>
                 <Link 
                   to="/" 
@@ -59,6 +66,17 @@ const Layout = ({ children }: LayoutProps) => {
                   <Tag className="h-4 w-4" />
                   <span>Categorias</span>
                 </Link>
+              </li>
+              <li>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={handleLogout}
+                  className="flex items-center gap-1"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Sair</span>
+                </Button>
               </li>
             </ul>
           </nav>
@@ -102,6 +120,15 @@ const Layout = ({ children }: LayoutProps) => {
                 <span className="text-xs mt-1">Categorias</span>
               </Link>
             </li>
+            <li className="flex-1 text-center">
+              <button
+                onClick={handleLogout}
+                className="flex flex-col items-center py-1 px-2 rounded-md text-gray-600 w-full"
+              >
+                <LogOut className="h-5 w-5" />
+                <span className="text-xs mt-1">Sair</span>
+              </button>
+            </li>
           </ul>
         </div>
       </nav>
@@ -116,7 +143,7 @@ const Layout = ({ children }: LayoutProps) => {
       {/* Footer */}
       <footer className="bg-white py-4 text-center text-sm text-muted-foreground border-t">
         <div className="container mx-auto">
-          Nothessamo Cafe - Gerencial &copy; {new Date().getFullYear()}
+          Notthesamo Cafe - Gerencial &copy; {new Date().getFullYear()}
           <p className="mt-1">Construído por pi3t.community</p>
         </div>
       </footer>

@@ -3,8 +3,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/layout/Layout";
+import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import ProductForm from "./pages/ProductForm";
@@ -14,6 +15,16 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
+  const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
+  
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -21,13 +32,63 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Layout><Dashboard /></Layout>} />
-          <Route path="/products" element={<Layout><Products /></Layout>} />
-          <Route path="/products/new" element={<Layout><ProductForm /></Layout>} />
-          <Route path="/products/edit/:id" element={<Layout><ProductForm /></Layout>} />
-          <Route path="/categories" element={<Layout><Categories /></Layout>} />
-          <Route path="/categories/new" element={<Layout><CategoryForm /></Layout>} />
-          <Route path="/categories/edit/:id" element={<Layout><CategoryForm /></Layout>} />
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/"
+            element={
+              <ProtectedRoute>
+                <Layout><Dashboard /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products"
+            element={
+              <ProtectedRoute>
+                <Layout><Products /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products/new"
+            element={
+              <ProtectedRoute>
+                <Layout><ProductForm /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/products/edit/:id"
+            element={
+              <ProtectedRoute>
+                <Layout><ProductForm /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories"
+            element={
+              <ProtectedRoute>
+                <Layout><Categories /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories/new"
+            element={
+              <ProtectedRoute>
+                <Layout><CategoryForm /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/categories/edit/:id"
+            element={
+              <ProtectedRoute>
+                <Layout><CategoryForm /></Layout>
+              </ProtectedRoute>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
