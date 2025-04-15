@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
@@ -69,7 +68,7 @@ const ProductForm = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { id: productId } = useParams<{ id: string }>();
-  
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -85,6 +84,12 @@ const ProductForm = () => {
   });
 
   useEffect(() => {
+    if (imagePreview) {
+      form.setValue("image", imagePreview);
+    }
+  }, [imagePreview]);
+
+  useEffect(() => {
     const fetchCategories = async () => {
       try {
         const { data, error } = await supabase
@@ -92,9 +97,7 @@ const ProductForm = () => {
           .select('*')
           .order('name', { ascending: true });
 
-        if (error) {
-          throw error;
-        }
+        if (error) throw error;
 
         setCategories(data || []);
       } catch (error: any) {
@@ -131,7 +134,7 @@ const ProductForm = () => {
           form.setValue('enabled', productData.enabled === false ? false : true);
           form.setValue('variantBoxTitle', productData.variant_box_title || "");
           form.setValue('image', productData.image || "");
-          
+
           if (productData.image) {
             setImagePreview(productData.image);
           }
@@ -161,59 +164,37 @@ const ProductForm = () => {
   }, [productId, form, navigate, toast]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files || e.target.files.length === 0) {
-      return;
-    }
-    
+    if (!e.target.files || e.target.files.length === 0) return;
     const file = e.target.files[0];
     setImageFile(file);
-    
-    const previewURL = URL.createObjectURL(file);
-    setImagePreview(previewURL);
+    setImagePreview(URL.createObjectURL(file));
   };
 
   const uploadImage = async () => {
     if (!imageFile) return null;
-    
     setUploading(true);
-    
     try {
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
       const filePath = `products/${fileName}`;
-      
-      // Check if bucket exists
-      const { data: buckets, error: bucketsError } = await supabase
-        .storage
-        .listBuckets();
-        
+
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
       if (bucketsError) throw bucketsError;
-      
-      // If images bucket doesn't exist, create it
+
       const imagesBucketExists = buckets.some(bucket => bucket.name === 'images');
       if (!imagesBucketExists) {
-        const { error: createBucketError } = await supabase
-          .storage
-          .createBucket('images', { public: true });
-          
+        const { error: createBucketError } = await supabase.storage.createBucket('images', { public: true });
         if (createBucketError) throw createBucketError;
       }
-      
-      const { error: uploadError } = await supabase.storage
-        .from('images')
-        .upload(filePath, imageFile, {
-          upsert: true,
-          contentType: imageFile.type
-        });
-        
-      if (uploadError) {
-        throw uploadError;
-      }
-      
-      const { data: { publicUrl } } = supabase.storage
-        .from('images')
-        .getPublicUrl(filePath);
-        
+
+      const { error: uploadError } = await supabase.storage.from('images').upload(filePath, imageFile, {
+        upsert: true,
+        contentType: imageFile.type
+      });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage.from('images').getPublicUrl(filePath);
       return publicUrl;
     } catch (error: any) {
       console.error("Error uploading image:", error);
@@ -231,8 +212,6 @@ const ProductForm = () => {
   const saveProduct = async (data: z.infer<typeof formSchema>) => {
     try {
       setIsSubmitting(true);
-      
-      // Ensure category is a valid number
       const categoryId = parseInt(data.category);
       if (isNaN(categoryId) || categoryId <= 0) {
         toast({
@@ -242,15 +221,16 @@ const ProductForm = () => {
         });
         return;
       }
-      
+
       let imageUrl = data.image;
       if (imageFile) {
         const uploadedUrl = await uploadImage();
+        console.log("Uploaded image URL:", uploadedUrl);
         if (uploadedUrl) {
           imageUrl = uploadedUrl;
         }
       }
-      
+
       const productData = {
         name: data.name,
         description: data.description || '',
@@ -263,42 +243,16 @@ const ProductForm = () => {
         updated_at: new Date().toISOString(),
       };
 
+      console.log("Product being saved:", productData);
+
       if (productId) {
-        const { error } = await supabase
-          .from('Product')
-          .update(productData)
-          .eq('id', Number(productId));
-
-        if (error) {
-          throw error;
-        }
-
-        toast({
-          title: "Produto atualizado com sucesso!",
-        });
+        const { error } = await supabase.from('Product').update(productData).eq('id', Number(productId));
+        if (error) throw error;
+        toast({ title: "Produto atualizado com sucesso!" });
       } else {
-        const { error } = await supabase
-          .from('Product')
-          .insert([{
-            ...productData,
-            created_at: new Date().toISOString(),
-          }]);
-
-        if (error) {
-          if (error.message.includes("violates foreign key constraint")) {
-            toast({
-              title: "Erro ao salvar produto",
-              description: "Por favor, selecione uma categoria válida.",
-              variant: "destructive",
-            });
-            return;
-          }
-          throw error;
-        }
-
-        toast({
-          title: "Produto criado com sucesso!",
-        });
+        const { error } = await supabase.from('Product').insert([{ ...productData, created_at: new Date().toISOString() }]);
+        if (error) throw error;
+        toast({ title: "Produto criado com sucesso!" });
       }
 
       navigate("/products");
@@ -317,116 +271,12 @@ const ProductForm = () => {
   const removeImage = () => {
     setImageFile(null);
     setImagePreview(null);
-    form.setValue('image', '');
-  };
-
-  const addVariant = () => {
-    setVariants([
-      ...variants,
-      {
-        id: Date.now(),
-        name: '',
-        price: 0,
-        product: productId ? Number(productId) : null,
-        isNew: true,
-      },
-    ]);
-  };
-
-  const updateVariant = (id: any, field: string, value: string | number | boolean) => {
-    setVariants(
-      variants.map((variant) =>
-        variant.id === id ? { ...variant, [field]: value } : variant
-      )
-    );
-  };
-
-  const saveVariant = async (variant: any) => {
-    try {
-      setIsSubmitting(true);
-      const variantData = {
-        name: variant.name,
-        price: Number(variant.price.toString().replace(',', '.')),
-        product: productId ? Number(productId) : null,
-      };
-
-      if (variant.isNew) {
-        const { data, error } = await supabase
-          .from('Variant')
-          .insert([variantData])
-          .select();
-
-        if (error) {
-          throw error;
-        }
-
-        setVariants(
-          variants.map((v) =>
-            v.id === variant.id ? { ...data[0], isNew: false } : v
-          )
-        );
-
-        toast({
-          title: "Variante criada com sucesso!",
-        });
-      } else {
-        const { error } = await supabase
-          .from('Variant')
-          .update(variantData)
-          .eq('id', variant.id);
-
-        if (error) {
-          throw error;
-        }
-
-        toast({
-          title: "Variante atualizada com sucesso!",
-        });
-      }
-    } catch (error: any) {
-      console.error("Error saving variant:", error.message);
-      toast({
-        title: "Erro ao salvar variante",
-        description: error.message || "Ocorreu um erro ao salvar a variante. Tente novamente mais tarde.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const deleteVariant = async (id: any) => {
-    try {
-      setIsSubmitting(true);
-      if (!variants.find(v => v.id === id)?.isNew) {
-        const { error } = await supabase.from('Variant').delete().eq('id', id);
-
-        if (error) {
-          throw error;
-        }
-      }
-
-      setVariants(variants.filter((variant) => variant.id !== id));
-
-      toast({
-        title: "Variante removida com sucesso!",
-      });
-    } catch (error: any) {
-      console.error("Error deleting variant:", error.message);
-      toast({
-        title: "Erro ao remover variante",
-        description: error.message || "Ocorreu um erro ao remover a variante. Tente novamente mais tarde.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    form.setValue("image", "");
   };
 
   return (
     <div className="container mx-auto py-8">
       <h1 className="text-2xl font-bold mb-4">{productId ? "Editar Produto" : "Novo Produto"}</h1>
-      
       <Card>
         <CardHeader>
           <CardTitle>Informações do Produto</CardTitle>
@@ -437,164 +287,72 @@ const ProductForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="name" className="form-label">Nome do Produto</Label>
-                    <Input id="name" type="text" className="form-input" placeholder="Nome do produto" {...form.register("name")} />
-                    {form.formState.errors.name && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.name.message}</p>
-                    )}
+                    <Label htmlFor="name">Nome do Produto</Label>
+                    <Input id="name" {...form.register("name")} />
+                    <FormMessage>{form.formState.errors.name?.message}</FormMessage>
                   </div>
-                  
                   <div>
-                    <Label htmlFor="description" className="form-label">Descrição</Label>
-                    <Textarea id="description" className="form-input" placeholder="Descrição do produto" {...form.register("description")} />
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea id="description" {...form.register("description")} />
                   </div>
-                  
                   <div>
-                    <Label htmlFor="price" className="form-label">Preço</Label>
-                    <Input
-                      id="price"
-                      type="text"
-                      className="form-input"
-                      placeholder="Preço do produto"
-                      {...form.register("price")}
-                    />
-                    {form.formState.errors.price && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.price.message}</p>
-                    )}
+                    <Label htmlFor="price">Preço</Label>
+                    <Input id="price" {...form.register("price")} />
+                    <FormMessage>{form.formState.errors.price?.message}</FormMessage>
                   </div>
-                  
                   <div>
-                    <Label htmlFor="stockQuantity" className="form-label">Quantidade em Estoque</Label>
-                    <Input
-                      id="stockQuantity"
-                      type="text"
-                      className="form-input"
-                      placeholder="Quantidade em estoque"
-                      {...form.register("stockQuantity")}
-                    />
-                    {form.formState.errors.stockQuantity && (
-                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.stockQuantity.message}</p>
-                    )}
+                    <Label htmlFor="stockQuantity">Estoque</Label>
+                    <Input id="stockQuantity" {...form.register("stockQuantity")} />
+                    <FormMessage>{form.formState.errors.stockQuantity?.message}</FormMessage>
                   </div>
-                  
-                  <FormField
-                    control={form.control}
-                    name="category"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Categoria</FormLabel>
-                        <Select 
-                          onValueChange={field.onChange} 
-                          defaultValue={field.value}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Selecione uma categoria" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category.id} value={category.id.toString()}>
-                                {category.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
+                  <FormField name="category" control={form.control} render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoria</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione uma categoria" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {categories.map(c => (
+                            <SelectItem key={c.id} value={c.id.toString()}>{c.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )} />
                   <div>
-                    <Label htmlFor="enabled" className="form-label">Ativo</Label>
-                    <div className="flex items-center space-x-2">
-                      <Switch 
-                        id="enabled" 
-                        checked={form.watch("enabled")}
-                        onCheckedChange={(checked) => form.setValue('enabled', checked)} 
-                      />
-                      <span>{form.watch("enabled") ? "Sim" : "Não"}</span>
-                    </div>
+                    <Label>Ativo</Label>
+                    <Switch checked={form.watch("enabled")} onCheckedChange={v => form.setValue("enabled", v)} />
                   </div>
                 </div>
-                
                 <div className="space-y-4">
                   <div>
-                    <Label className="form-label">Imagem do Produto</Label>
-                    <div className="border rounded-md p-4 space-y-4">
+                    <Label>Imagem do Produto</Label>
+                    <div className="border p-4 rounded-md space-y-2">
                       {imagePreview ? (
-                        <div className="space-y-3">
-                          <div className="relative">
-                            <img 
-                              src={imagePreview} 
-                              alt="Preview" 
-                              className="w-full h-auto max-h-80 object-contain rounded-md" 
-                            />
-                            <Button 
-                              type="button" 
-                              variant="destructive" 
-                              size="sm" 
-                              className="absolute top-2 right-2" 
-                              onClick={removeImage}
-                            >
-                              <XCircle className="h-4 w-4" />
-                            </Button>
-                          </div>
-                          <Input 
-                            type="hidden" 
-                            {...form.register("image")} 
-                            value={imagePreview} 
-                          />
-                        </div>
+                        <>
+                          <img src={imagePreview} className="rounded-md max-h-80 object-contain" alt="Preview" />
+                          <Button type="button" variant="destructive" onClick={removeImage}>
+                            <XCircle className="mr-2 h-4 w-4" /> Remover imagem
+                          </Button>
+                          <Input type="hidden" {...form.register("image")} />
+                        </>
                       ) : (
-                        <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-gray-300 rounded-md">
-                          <Image className="h-16 w-16 text-gray-400 mb-2" />
-                          <p className="text-sm text-gray-500 mb-4">Clique para adicionar uma imagem</p>
-                          <Input 
-                            type="file" 
-                            id="image" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={handleImageChange} 
-                          />
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            onClick={() => document.getElementById('image')?.click()}
-                          >
-                            <Upload className="mr-2 h-4 w-4" />
-                            Escolher Imagem
+                        <>
+                          <Input type="file" id="image" accept="image/*" className="hidden" onChange={handleImageChange} />
+                          <Button type="button" variant="outline" onClick={() => document.getElementById('image')?.click()}>
+                            <Upload className="mr-2 h-4 w-4" /> Selecionar imagem
                           </Button>
-                        </div>
-                      )}
-                      
-                      {imagePreview && (
-                        <div>
-                          <Input 
-                            type="file" 
-                            id="image" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={handleImageChange} 
-                          />
-                          <Button 
-                            type="button" 
-                            variant="outline" 
-                            className="w-full" 
-                            onClick={() => document.getElementById('image')?.click()}
-                          >
-                            <Upload className="mr-2 h-4 w-4" />
-                            Trocar Imagem
-                          </Button>
-                        </div>
+                        </>
                       )}
                     </div>
                   </div>
                 </div>
               </div>
-              
-              <Button type="submit" disabled={isSubmitting || uploading} className="w-full md:w-auto">
+              <Button type="submit" disabled={isSubmitting || uploading}>
                 {(isSubmitting || uploading) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 {isSubmitting || uploading ? "Salvando..." : "Salvar Produto"}
               </Button>
@@ -602,67 +360,6 @@ const ProductForm = () => {
           </Form>
         </CardContent>
       </Card>
-
-      {productId && (
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Variantes do Produto</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {variants.length > 0 && (
-              <div className="mb-4">
-                <Label htmlFor="variantBoxTitle" className="form-label">Título da Caixa de Variantes</Label>
-                <Input
-                  id="variantBoxTitle"
-                  type="text"
-                  className="form-input"
-                  placeholder="Título da caixa de variantes"
-                  {...form.register("variantBoxTitle")}
-                />
-              </div>
-            )}
-            {variants.map((variant) => (
-              <div key={variant.id} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
-                <div>
-                  <Label htmlFor={`variant-name-${variant.id}`} className="form-label">Nome da Variante</Label>
-                  <Input
-                    id={`variant-name-${variant.id}`}
-                    type="text"
-                    className="form-input"
-                    placeholder="Nome"
-                    value={variant.name || ''}
-                    onChange={(e) => updateVariant(variant.id, 'name', e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor={`variant-price-${variant.id}`} className="form-label">Preço da Variante</Label>
-                  <Input
-                    id={`variant-price-${variant.id}`}
-                    type="text"
-                    className="form-input"
-                    placeholder="Preço"
-                    value={variant.price || 0}
-                    onChange={(e) => updateVariant(variant.id, 'price', e.target.value)}
-                  />
-                </div>
-                <div className="md:col-span-2 flex items-end justify-end">
-                  <Button type="button" variant="secondary" onClick={() => saveVariant(variant)} disabled={isSubmitting} className="mr-2">
-                    {isSubmitting ? "Salvando..." : "Salvar Variante"}
-                  </Button>
-                  <Button type="button" variant="destructive" onClick={() => deleteVariant(variant.id)} disabled={isSubmitting}>
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Remover
-                  </Button>
-                </div>
-              </div>
-            ))}
-            <Button type="button" variant="outline" onClick={addVariant} disabled={isSubmitting}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Adicionar Variante
-            </Button>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };
