@@ -14,6 +14,8 @@ import ProductAnalysis from '@/components/dashboard/ProductAnalysis';
 import CategoryRevenue from '@/components/dashboard/CategoryRevenue';
 import ProductCombinations from '@/components/dashboard/ProductCombinations';
 import DateRangePicker from '@/components/dashboard/DateRangePicker';
+import DataVisibilityToggle from '@/components/dashboard/DataVisibilityToggle';
+import { useDataVisibility } from '@/contexts/DataVisibilityContext';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Dashboard = () => {
@@ -26,6 +28,7 @@ const Dashboard = () => {
   const [dashboardData, setDashboardData] = useState<any>(null);
   const { toast } = useToast();
   const isMobile = useIsMobile();
+  const { isDataVisible } = useDataVisibility();
 
   // Handle date range changes
   const handleDateChange = (start: Date | undefined, end: Date | undefined) => {
@@ -346,13 +349,16 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <h1 className="text-2xl font-bold tracking-tight">Painel</h1>
-        <DateRangePicker 
-          period={period}
-          onPeriodChange={handlePeriodChange}
-          startDate={startDate}
-          endDate={endDate}
-          onDateChange={handleDateChange}
-        />
+        <div className="flex flex-wrap items-center gap-2">
+          <DateRangePicker 
+            period={period}
+            onPeriodChange={handlePeriodChange}
+            startDate={startDate}
+            endDate={endDate}
+            onDateChange={handleDateChange}
+          />
+          <DataVisibilityToggle />
+        </div>
       </div>
 
       {isLoading ? (
@@ -371,17 +377,32 @@ const Dashboard = () => {
               {/* Métricas principais */}
               <DashboardMetrics data={dashboardData} />
               
-              {/* Análise de vendas semanais */}
-              <WeeklySalesComparison data={dashboardData.comparativoSemanal} isLoading={isLoading} />
+              {/* Charts - Only show when isDataVisible is true */}
+              {isDataVisible && (
+                <>
+                  {/* Análise de vendas semanais */}
+                  <WeeklySalesComparison data={dashboardData.comparativoSemanal} isLoading={isLoading} />
 
-              {/* Análise de produtos com filtro de período */}
-              <ProductAnalysis data={dashboardData.produtosVendidos} isLoading={isLoading} />
+                  {/* Análise de produtos com filtro de período */}
+                  <ProductAnalysis data={dashboardData.produtosVendidos} isLoading={isLoading} />
 
-              {/* Distribuição de receita por categoria com filtro de período */}
-              <CategoryRevenue data={dashboardData.vendasPorCategoria} isLoading={isLoading} />
+                  {/* Distribuição de receita por categoria com filtro de período */}
+                  <CategoryRevenue data={dashboardData.vendasPorCategoria} isLoading={isLoading} />
 
-              {/* Produtos mais vendidos juntos com filtro de período */}
-              <ProductCombinations data={dashboardData.combinacoesProdutos} isLoading={isLoading} />
+                  {/* Produtos mais vendidos juntos com filtro de período */}
+                  <ProductCombinations data={dashboardData.combinacoesProdutos} isLoading={isLoading} />
+                </>
+              )}
+              
+              {/* Message when charts are hidden */}
+              {!isDataVisible && (
+                <div className="p-8 border rounded-lg bg-muted/50 text-center">
+                  <p className="text-lg font-medium">Os gráficos estão ocultos para proteger dados sensíveis</p>
+                  <p className="text-sm text-muted-foreground mt-2">
+                    Clique no botão "Mostrar Dados" para visualizar os gráficos e análises
+                  </p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -392,7 +413,7 @@ const Dashboard = () => {
                   <Coffee className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{productCount}</div>
+                  <div className="text-2xl font-bold">{isDataVisible ? productCount : "********"}</div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Total de itens no inventário
                   </p>
@@ -412,7 +433,7 @@ const Dashboard = () => {
                   <Tag className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{categoryCount}</div>
+                  <div className="text-2xl font-bold">{isDataVisible ? categoryCount : "********"}</div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Total de categorias de produtos
                   </p>

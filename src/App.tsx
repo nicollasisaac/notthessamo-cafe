@@ -12,6 +12,7 @@ import ProductForm from "./pages/ProductForm";
 import Categories from "./pages/Categories";
 import CategoryForm from "./pages/CategoryForm";
 import NotFound from "./pages/NotFound";
+import { DataVisibilityProvider } from "./contexts/DataVisibilityContext";
 
 const queryClient = new QueryClient();
 
@@ -27,72 +28,74 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route
-            path="/"
-            element={
-              <ProtectedRoute>
-                <Layout><Dashboard /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/products"
-            element={
-              <ProtectedRoute>
-                <Layout><Products /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/products/new"
-            element={
-              <ProtectedRoute>
-                <Layout><ProductForm /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/products/edit/:id"
-            element={
-              <ProtectedRoute>
-                <Layout><ProductForm /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/categories"
-            element={
-              <ProtectedRoute>
-                <Layout><Categories /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/categories/new"
-            element={
-              <ProtectedRoute>
-                <Layout><CategoryForm /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/categories/edit/:id"
-            element={
-              <ProtectedRoute>
-                <Layout><CategoryForm /></Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
+    <DataVisibilityProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <Layout><Dashboard /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products"
+              element={
+                <ProtectedRoute>
+                  <Layout><Products /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products/new"
+              element={
+                <ProtectedRoute>
+                  <Layout><ProductForm /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/products/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout><ProductForm /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/categories"
+              element={
+                <ProtectedRoute>
+                  <Layout><Categories /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/categories/new"
+              element={
+                <ProtectedRoute>
+                  <Layout><CategoryForm /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/categories/edit/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout><CategoryForm /></Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </DataVisibilityProvider>
   </QueryClientProvider>
 );
 

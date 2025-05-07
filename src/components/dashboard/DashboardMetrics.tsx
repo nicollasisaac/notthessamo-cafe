@@ -2,6 +2,7 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ShoppingCart, DollarSign, CreditCard, TrendingUp } from 'lucide-react';
+import { useDataVisibility } from '@/contexts/DataVisibilityContext';
 
 interface DashboardMetricsProps {
   data: {
@@ -20,11 +21,19 @@ interface DashboardMetricsProps {
 }
 
 const DashboardMetrics: React.FC<DashboardMetricsProps> = ({ data }) => {
+  const { isDataVisible } = useDataVisibility();
+  
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(value);
+    return isDataVisible 
+      ? new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL'
+        }).format(value)
+      : "R$ ********";
+  };
+
+  const hideValue = (value: number | string) => {
+    return isDataVisible ? value : "********";
   };
 
   return (
@@ -36,7 +45,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({ data }) => {
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.totalVendas}</div>
+            <div className="text-2xl font-bold">{hideValue(data.totalVendas)}</div>
           </CardContent>
         </Card>
         
@@ -67,7 +76,10 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({ data }) => {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {data.evolucaoPercentual > 0 ? '+' : ''}{data.evolucaoPercentual.toFixed(1)}%
+              {isDataVisible ? 
+                `${data.evolucaoPercentual > 0 ? '+' : ''}${data.evolucaoPercentual.toFixed(1)}%` : 
+                "********"
+              }
             </div>
           </CardContent>
         </Card>
@@ -80,7 +92,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({ data }) => {
             <CardTitle className="text-sm font-medium">Total de Clientes Únicos</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.totalClientes}</div>
+            <div className="text-2xl font-bold">{hideValue(data.totalClientes)}</div>
           </CardContent>
         </Card>
         
@@ -89,7 +101,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({ data }) => {
             <CardTitle className="text-sm font-medium">Média Compras/Cliente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.mediaFrequencia.toFixed(1)}</div>
+            <div className="text-2xl font-bold">{isDataVisible ? data.mediaFrequencia.toFixed(1) : "********"}</div>
           </CardContent>
         </Card>
         
@@ -107,7 +119,7 @@ const DashboardMetrics: React.FC<DashboardMetricsProps> = ({ data }) => {
             <CardTitle className="text-sm font-medium">Melhor Cliente</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data.melhorCliente.nome}</div>
+            <div className="text-2xl font-bold">{hideValue(data.melhorCliente.nome)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {formatCurrency(data.melhorCliente.receita)}
             </p>
